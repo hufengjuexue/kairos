@@ -24,6 +24,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,8 +37,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +48,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +68,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,6 +86,8 @@ import me.rerere.hugeicons.stroke.Idea01
 import me.rerere.hugeicons.stroke.Sparkles
 import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.ui.context.LocalToaster
+import me.rerere.ui.toast.ToastType
 
 private val ObsidianBackdrop = Color(0xFF0B0C12)
 private val SingularityGold = Color(0xFFF3CE84)
@@ -192,34 +199,40 @@ private data class OnboardingSlide(
 
 private val OnboardingSlides = listOf(
     OnboardingSlide(
-        tag = "01 / 05 · 现代化 RP 架构",
-        title = "只需 3 个模型\n剩下的交给我",
-        subtitle = "Kairos —— 让对的记忆在恰逢其时的这一轮浮现",
-        description = "告别繁琐插件、采样器玄学与上万字八股文。你只需要选好「主对话 · 向量嵌入 · 决策重排」这 3 个分工模型，前缀缓存保护、尾部记忆检索与关系图谱全由 Kairos 自动驱动。",
+        tag = "01 / 06 · 第一阶：零门槛先聊",
+        title = "第一阶：零门槛先聊\n1 把 Key 就能直接开演",
+        subtitle = "不限平台 · 先把天聊起来",
+        description = "刚装好 App 别被高阶参数吓到！先选任意一家你能拿到 Key 的平台（DeepSeek、硅基流动、OpenRouter、Google 等），在「设置 → 提供商」填入 1 把 LLM Key 保存，再去「模型设置 → 主对话模型」选好聊天模型，就能立刻开聊。",
     ),
     OnboardingSlide(
-        tag = "02 / 05 · 核心模型 01",
-        title = "主对话模型\n撑起逻辑与文风上限",
-        subtitle = "Chat Model · 唯一主力大脑",
-        description = "体验 = 逻辑底座 × 语言颗粒度。把最聪明的旗舰模型只留给主对话轮次，专心演绎人物口吻、情绪张力与轻量 Agent 工具调用，不被检索杂活分散注意力。",
+        tag = "02 / 06 · 第二阶：核心模型 01",
+        title = "主对话模型 (Chat)\n撑起逻辑与文风上限",
+        subtitle = "体验 = 逻辑底座 × 语言颗粒度",
+        description = "会聊天之后，想让长线 RP 不失忆、不塞满万字死设定，需要配齐 3 个各司其职的模型。第 1 个是主对话模型：把最聪明的旗舰大脑完全留给正文演出、角色口吻与剧情张力，不被检索杂活分散算力。",
     ),
     OnboardingSlide(
-        tag = "03 / 05 · 核心模型 02",
-        title = "向量嵌入模型\n负责一阶段广域海选",
-        subtitle = "Embedding Model · 长期档案 + 早期历史切片",
-        description = "在云端把设定集（topics）与溢出窗口的早年对话编码并持久化本地 `VEC1` 缓存。每一轮先毫秒级算出语义余弦相似度，捞出一阶段候选记忆池（未配时也自动降级词法召回）。",
+        tag = "03 / 06 · 第二阶：核心模型 02",
+        title = "向量嵌入模型 (Embedding)\n负责一阶段广域海选",
+        subtitle = "长期设定档案 + 早期历史切片",
+        description = "在云端把冷层设定（/topics 等）与溢出窗口的早年对话编码并持久化本地 VEC1 缓存。每一轮先毫秒级算出语义余弦相似度，捞出一阶段候选记忆池（未配时也自动降级词法召回）。",
     ),
     OnboardingSlide(
-        tag = "04 / 05 · 核心模型 03",
-        title = "决策重排模型\n二阶段精准裁决官",
-        subtitle = "Decision / Rerank · 保准度更死保前缀缓存",
-        description = "推荐 `gemini-decision-1`（单前向打分）或轻量快速模型：结合当前语境把一阶段候选池过滤精排，只将最切题的几段从尾部注入，100% 死保头部 Prompt Caching 不被击穿。",
+        tag = "04 / 06 · 第二阶：核心模型 03",
+        title = "决策重排模型 (Decision)\n二阶段裁决 + 缓存护盾",
+        subtitle = "推荐 gemini-decision-1 · 死保前缀缓存",
+        description = "结合当前语境对一阶段候选池精准打分，滤除伪相关噪音后只将最切题的几段从尾部注入——头部 System Prompt 与 /core.md、/state.md 字节级不变，100% 死保云端 Prompt Caching 不被击穿。",
     ),
     OnboardingSlide(
-        tag = "05 / 05 · 一切就绪",
-        title = "两步配齐\n剩下的交给 Kairos",
-        subtitle = "其余标题、翻译、OCR 均归入可选辅助",
-        description = "先进「提供商」填入 API Key，再去「模型设置」配好这 3 个核心角色即可开聊。专注沉浸 RP 的同时，内置的 MCP、Skills 与工作区工具也能随时胜任轻量 Agent 任务。",
+        tag = "05 / 06 · 第三阶：终极谷歌路线 A",
+        title = "AIS 自建多项目免费号池\n零成本满配三模型",
+        subtitle = "单 Key 自动吃强轮弱 · 前 2 把锁嵌入与决策",
+        description = "Google AI Studio 每个独立项目每天免费给 4 Hydrogen (20) + 3.8 Flash (20) + 3.6 Flash (20) 共 60 次主力对话，外加 Embedding 2 (1,000 次/日) 和 Decision 1 (10,000 次/日)！务必点「创建新项目」每项目拿 1 把 Key（同项目多建 Key 额度共享无效），批量粘贴进 Google 提供商即可：单 Key 内按 Hydrogen → 3.8 → 3.6 自动吃强轮弱（1 分钟全冷却回 #1/#2 的 3.5fl 兜底，前 3 个 RPD 日满立刻切下一把 Key 不等 500；3.5fl / Embedding / Decision 自动锁定前 2 把 Key）。",
+    ),
+    OnboardingSlide(
+        tag = "06 / 06 · 第三阶：终极谷歌路线 B",
+        title = "官方 Gemini App + NotebookLM\n零折腾原生绿色 RP",
+        subtitle = "Source 知识库静态解耦 · 1~2 句定调即开演",
+        description = "连 API 号池都懒得配？直接用纯谷歌官方免费全家桶：把原作小说、人物设定集与世界观丢进 Google NotebookLM 提炼角色关系网、场景锚点与大纲；再在官方 Gemini App（gemini.google.com 或客户端 / Gem）里直接挂载该 NotebookLM 笔记本作为 Source，开聊仅需 1~2 句定调，0 反代、100% 原生绿色畅玩。",
     ),
 )
 
@@ -343,8 +356,9 @@ fun OnboardingGuideOverlay(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+                    verticalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterVertically),
                 ) {
                     // 动态可点击演示舞台卡片（点击直接推进到下一张 PPT）
                     Surface(
@@ -355,9 +369,7 @@ fun OnboardingGuideOverlay(
                                 onGoToProviders()
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false),
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(28.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                         border = BorderStroke(
@@ -532,25 +544,25 @@ private fun PptDiagramStage(
             0 -> {
                 PptRoleRow(
                     index = "01",
-                    icon = HugeIcons.BubbleChat,
-                    title = "主对话模型 (Chat)",
-                    detail = "逻辑底座与语言颗粒度上限 · 兼轻量 Agent",
+                    icon = HugeIcons.Idea01,
+                    title = "第一阶 · 1 把 Key 零门槛先聊",
+                    detail = "任意平台填入 LLM Key 并选主对话模型即可开聊",
                     highlighted = beat >= 1,
                     accent = MaterialTheme.colorScheme.primary,
                 )
                 PptRoleRow(
                     index = "02",
                     icon = HugeIcons.Database02,
-                    title = "向量嵌入模型 (Embedding)",
-                    detail = "一阶段广域海选 · 档案与历史语义检索",
+                    title = "第二阶 · 三模型分工长线记忆",
+                    detail = "Chat + Embedding + Decision，不失忆且保缓存",
                     highlighted = beat >= 2,
                     accent = MaterialTheme.colorScheme.secondary,
                 )
                 PptRoleRow(
                     index = "03",
                     icon = HugeIcons.Sparkles,
-                    title = "决策重排模型 (Decision)",
-                    detail = "二阶段语境精排 · 滤除噪音并死保前缀缓存",
+                    title = "第三阶 · 全谷歌免费终极双路线",
+                    detail = "AIS 多项目免费号池 / Gemini App + NotebookLM",
                     highlighted = beat >= 3,
                     accent = MaterialTheme.colorScheme.tertiary,
                 )
@@ -672,7 +684,51 @@ private fun PptDiagramStage(
                 }
             }
 
+            4 -> {
+                PptRoleRow(
+                    index = "A",
+                    icon = HugeIcons.Sparkles,
+                    title = "Google AI Studio · 多项目免费号池",
+                    detail = "全谷歌生态零成本配齐三模型 API",
+                    highlighted = true,
+                    accent = MaterialTheme.colorScheme.primary,
+                )
+                AnimatedVisibility(
+                    visible = beat >= 1,
+                    enter = fadeIn(tween(260)) + slideInVertically(tween(260)) { it / 4 },
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            PptMiniPill(
+                                text = "单独立项目每日：Hydrogen(20) + 3.8(20) + 3.6(20) + Emb2(1K) + Dec1(10K)",
+                                modifier = Modifier.fillMaxWidth(),
+                                active = beat >= 1,
+                            )
+                            PptMiniPill(
+                                text = "避坑铁律：必须「创建新项目」每项目 1 把 Key，同项目多 Key 共享无效",
+                                modifier = Modifier.fillMaxWidth(),
+                                active = beat >= 2,
+                            )
+                            PptMiniPill(
+                                text = "自动调度：Hydrogen→3.8→3.6 吃强轮弱 · 3.5fl/Emb/Dec 锁前 2 把",
+                                modifier = Modifier.fillMaxWidth(),
+                                active = beat >= 3,
+                            )
+                        }
+                    }
+                }
+            }
+
             else -> {
+                val uriHandler = LocalUriHandler.current
+                val toaster = LocalToaster.current
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
@@ -692,14 +748,36 @@ private fun PptDiagramStage(
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                             Text(
-                                text = "上手路线 · 只需两步",
+                                text = "终极路线 B · 原生绿色全家桶",
                                 style = MaterialTheme.typography.titleSmallEmphasized,
                             )
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        PptCheckStep(number = "1", text = "打开「提供商」填入 API Key", visible = beat >= 1)
-                        PptCheckStep(number = "2", text = "在「模型设置」选好 01 对话 · 02 嵌入 · 03 决策重排", visible = beat >= 2)
-                        PptCheckStep(number = "✓", text = "专注沉浸 RP，同时内置 MCP / Skills / 工作区轻量 Agent", visible = beat >= 3)
+                        PptCheckStep(number = "1", text = "NotebookLM 导入小说/世界观 → 提炼关系网、锚点与大纲", visible = beat >= 1)
+                        PptCheckStep(number = "2", text = "Gemini App / Gem 直接挂载 NotebookLM 作为 Source", visible = beat >= 2)
+                        PptCheckStep(number = "✓", text = "开聊仅需 1~2 句定调：0 反代、零维护、原生满血体验", visible = beat >= 3)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    val links = listOf(
+                        "AI Studio" to "https://aistudio.google.com/apikey",
+                        "Gemini App" to "https://gemini.google.com/",
+                        "NotebookLM" to "https://notebooklm.google.com/",
+                    )
+                    links.forEach { (label, url) ->
+                        OutlinedButton(
+                            onClick = {
+                                runCatching { uriHandler.openUri(url) }
+                                    .onFailure { toaster.show("无法打开浏览器: ${it.message}", type = ToastType.Error) }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
             }
