@@ -113,7 +113,7 @@ private val pinnedPathOrder = listOf(
     MemoryFile.LEGACY_PROFILE_PATH,
     MemoryFile.LEGACY_PREFERENCES_PATH,
 )
-private val directoryOrder = listOf("/", "/topics", "/areas", "/people")
+private val directoryOrder = listOf("/", "/topics", "/areas", "/arcs", "/people")
 
 private fun <T> List<T>.orderOf(item: T) = indexOf(item).let { if (it < 0) size else it }
 

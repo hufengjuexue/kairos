@@ -517,12 +517,13 @@ private fun memoryConsolidationSummary(status: MemoryConsolidationStatus): Strin
 // 按整秒显示成 "42s"、"1m 5s"
 private fun durationTextOf(duration: Duration): String = duration.inWholeSeconds.coerceAtLeast(1).seconds.toString()
 
-// 根目录下是 profile 和 preferences，都是关于用户本人的；记忆格式约定的几个目录有译名，其余的从目录名推
+// 根目录下是 core 和 state；记忆格式约定的几个目录有译名，其余的从目录名推
 @Composable
 private fun memorySectionTitle(directory: String): String = when (directory) {
     "/" -> stringResource(R.string.assistant_page_memory_section_you)
     "/topics" -> stringResource(R.string.assistant_page_memory_section_topics)
     "/areas" -> stringResource(R.string.assistant_page_memory_section_areas)
+    "/arcs" -> "剧情与主线"
     "/people" -> stringResource(R.string.assistant_page_memory_section_people)
     else -> memoryTitleOf(directory.removePrefix("/"))
 }

@@ -294,10 +294,14 @@ class MemoryConsolidator(
         }
 
         val steps = finished.message.getTools()
-        val touched = steps.mapNotNull { it.memoryWritePath() }
-            .map { MemoryFile.normalizePath(it) ?: it }
-            .distinct()
         val remaining = memoryRepository.getFiles(memoryId).associateBy { it.path }
+        val touched = steps.mapNotNull { it.memoryWritePath() }
+            .map { raw ->
+                val norm = MemoryFile.normalizePath(raw) ?: raw
+                if (norm in remaining) norm
+                else MemoryFile.pinnedAliasOf(norm)?.takeIf { it in remaining } ?: MemoryFile.canonicalPinnedPath(norm)
+            }
+            .distinct()
         return MemoryConsolidationRun(
             memoryId = memoryId,
             finishedAt = System.currentTimeMillis(),

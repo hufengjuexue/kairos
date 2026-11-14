@@ -35,9 +35,10 @@
 ## 四、 Kairos 核心能力矩阵（基于 RikkaHub 3.2.0+）
 
 1. **尾部向量召回与决策精排（`MemoryVectorTailTransformer`）**
-   - **头部常驻**：`profile.md` 与 `preferences.md` 常驻顶部系统上下文，不参与分片漂移。
-   - **一阶段粗召回（Stage 1）**：`topics/*.md` 与超出 `limitContext` 的早先原始对话按语义切块，优先走云端 Embedding 余弦相似度（`VEC1` 二进制 Float32 本地持久化缓存 `VectorStoreCache`）；无嵌入模型或接口异常时自动走本地中英文词法相关性兜底。
+   - **头部常驻**：`/core.md` 与 `/state.md`（双向兼容旧版 `/profile.md`、`/preferences.md`，Room 打开数据库时也会自动幂等迁名）常驻顶部系统上下文，不参与分片漂移。
+   - **一阶段粗召回（Stage 1）**：`/topics/*.md` 等深层档案与超出 `limitContext` 的早先原始对话按完整逻辑段切块（不再 `take(420)` 暴力截断），优先走云端 Embedding 余弦相似度（`VEC1` 二进制 Float32 本地持久化缓存 `VectorStoreCache`）；无嵌入模型或接口异常时自动走本地中英文词法相关性兜底。
    - **二阶段决策精排（Stage 2）**：`ModelType.DECISION`（Google `gemini-decision-1`，走 `POST /v1beta/decisions` 单前向批量评估；留空时若已启用提供商含 Decision 模型则自动激活）或用户显式选择的轻量 `CHAT` 模型（超短 Listwise 索引重排，强制关闭 Thinking 防消耗），对粗召回并集候选池（上限 24 条）做上下文裁决，过滤误召回后保留 Top-6 并按 `(path, order)` 排序注入最后一条 User 消息之前；同轮多步工具调用期间冻结召回结果（`frozenTurnRecall`），死保前缀缓存。
+   - **压缩前打捞与新手指引**：`extractBeforeCompression` 全量打捞待压缩轮次（`maxTurns = Int.MAX_VALUE`、`ASSISTANT_MESSAGE_LENGTH = 8000`）；`OnboardingGuideOverlay`（6 页 PPT 引导）已收口完整三阶 RP 教程并挂载至设置主页顶栏。
    - **故障无感降级**：Embedding 或 Decision 接口异常均带 60 秒冷却窗口（TTL），自动回退一阶段 / 词法兜底，绝不阻塞主对话。
 
 2. **时序记忆关系图谱（Room v33 → v34）**
