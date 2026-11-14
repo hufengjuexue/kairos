@@ -156,7 +156,7 @@ class MemoryVectorTailTransformerTest {
     @Test
     fun `chunkMemoryFiles keeps mid-sized sections intact and preserves heading when splitting oversized sections`() {
         val midSection = "## 阶段演变\n" + "- [2026-10] 早期边界规则。\n".repeat(30) // ~600-900 chars, stays intact
-        val hugeSection = "## 长期脉络\n" + List(40) { i -> "- [2026-11-${(i % 28) + 1}] 第 $i 条连续演化记录内容，用来测试超过 2200 字后的分段与标题保留。\n\n" }.joinToString("")
+        val hugeSection = "## 长期脉络\n" + List(65) { i -> "- [2026-11-${(i % 28) + 1}] 第 $i 条连续演化记录内容，用来测试超过 2200 字后的分段与标题保留。\n\n" }.joinToString("")
         val file = MemoryFile(
             path = "/topics/relationship.md",
             content = "---\nname: relationship\ntitle: 关系动态\n---\n\n$midSection\n\n$hugeSection",
