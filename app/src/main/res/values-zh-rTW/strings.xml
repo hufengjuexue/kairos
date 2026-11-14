@@ -1844,4 +1844,13 @@
   <string name="chat_message_tool_phone_use_open_app_name">開啟應用程式：%1$s</string>
   <string name="chat_message_tool_phone_use_list_apps">列出應用程式</string>
   <string name="chat_message_tool_phone_use_wait">等待 %1$s 秒</string>
+  <string name="chat_page_scroll_to_top">回到頂部</string>
+  <string name="chat_message_map_title">跳轉到訊息</string>
+  <string name="chat_message_map_current_position">目前定位：第 %1$d / %2$d 條</string>
+  <string name="chat_message_map_hint">點擊任意一則訊息即可快速跳轉</string>
+  <string name="chat_message_map_role_user">使用者</string>
+  <string name="chat_message_map_role_ai">AI</string>
+  <string name="chat_message_map_filter_favorite">僅顯示收藏</string>
+  <string name="chat_message_map_empty">沒有符合的訊息</string>
+  <string name="chat_message_map_media_only">[媒體/附件]</string>
 </resources>

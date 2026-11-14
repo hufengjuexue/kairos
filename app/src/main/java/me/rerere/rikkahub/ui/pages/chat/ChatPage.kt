@@ -360,7 +360,7 @@ private fun ChatPageContent(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxSize()
     ) {
-        AssistantBackground(setting = setting, modifier = Modifier.hazeSource(hazeState))
+        AssistantBackground(setting = setting, modifier = Modifier.hazeSource(hazeState, zIndex = 0f))
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {

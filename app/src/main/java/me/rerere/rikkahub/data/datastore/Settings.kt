@@ -44,7 +44,6 @@ data class Settings(
     // 记忆整理用的模型，没设置时用快速模型
     val memoryModelId: Uuid? = null,
     val memoryModelReasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
-    val imageGenerationModelId: Uuid = Uuid.random(),
     val enableAutoTitle: Boolean = true,
     val titlePrompt: String = DEFAULT_TITLE_PROMPT,
     val translateModeId: Uuid = Uuid.random(),

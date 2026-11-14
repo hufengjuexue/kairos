@@ -62,7 +62,6 @@ import me.rerere.hugeicons.stroke.Code
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.Folder01
 import me.rerere.hugeicons.stroke.FolderAdd
-import me.rerere.hugeicons.stroke.Image02
 import me.rerere.hugeicons.stroke.ImageToVideo
 import me.rerere.hugeicons.stroke.InLove
 import me.rerere.hugeicons.stroke.LanguageCircle
@@ -436,14 +435,6 @@ fun ChatDrawerContent(
                         expanded = showMenuPopup,
                         onDismissRequest = { showMenuPopup = false }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_page_menu_image_generation)) },
-                            leadingIcon = { Icon(HugeIcons.Image02, null) },
-                            onClick = {
-                                showMenuPopup = false
-                                navController.navigate(Screen.ImageGen)
-                            }
-                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.chat_page_menu_view_prompt)) },
                             leadingIcon = { Icon(HugeIcons.Code, null) },

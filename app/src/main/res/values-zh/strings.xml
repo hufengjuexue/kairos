@@ -1936,4 +1936,13 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="chat_message_tool_phone_use_open_app_name">打开应用：%1$s</string>
   <string name="chat_message_tool_phone_use_list_apps">列出应用</string>
   <string name="chat_message_tool_phone_use_wait">等待 %1$s 秒</string>
+  <string name="chat_page_scroll_to_top">回到顶部</string>
+  <string name="chat_message_map_title">跳转到消息</string>
+  <string name="chat_message_map_current_position">当前定位：第 %1$d / %2$d 条</string>
+  <string name="chat_message_map_hint">点击任意一条消息即可快速跳转</string>
+  <string name="chat_message_map_role_user">用户</string>
+  <string name="chat_message_map_role_ai">AI</string>
+  <string name="chat_message_map_filter_favorite">仅显示收藏</string>
+  <string name="chat_message_map_empty">没有匹配的消息</string>
+  <string name="chat_message_map_media_only">[媒体/附件]</string>
 </resources>

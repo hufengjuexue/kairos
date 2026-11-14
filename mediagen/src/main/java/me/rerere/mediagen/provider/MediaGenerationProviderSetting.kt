@@ -53,10 +53,13 @@ sealed class MediaGenerationProviderSetting {
         override val models: List<MediaGenerationModel> = listOf(
             MediaGenerationModel(modelId = "gpt-image-2.5-sunburst", kind = MediaKind.IMAGE),
             MediaGenerationModel(modelId = "gpt-image-2.5-flare", kind = MediaKind.IMAGE),
+            MediaGenerationModel(modelId = "sora-2", kind = MediaKind.VIDEO),
         ),
     ) : MediaGenerationProviderSetting() {
         override val supportedKinds: Set<MediaKind>
-            get() = setOf(MediaKind.IMAGE)
+            get() = setOf(MediaKind.IMAGE, MediaKind.VIDEO)
+
+        override fun downloadHeaders(url: String): Map<String, String> = sameOriginBearer(url)
 
         override fun copyProvider(
             id: Uuid,

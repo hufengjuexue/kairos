@@ -249,13 +249,70 @@ class OpenAIMediaGenerationProviderTest {
     }
 
     @Test
-    fun kindWithoutAdapterIsRejectedBeforeHittingTheNetwork() = runBlocking {
-        val manager = MediaGenerationManager(fakeClient { error("unsupported kind must not hit the network") })
+    fun videoCreateAndPollWorkAndRejectsUnsupportedKindOnMiniMax() = runBlocking {
+        val requests = mutableListOf<Request>()
+        var pollCount = 0
+        val client = fakeClient(requests) { request ->
+            val path = request.url.encodedPath
+            when {
+                request.method == "POST" && path == "/v1/videos" -> jsonResponse(
+                    request,
+                    """{"id":"video_1","status":"queued","model":"sora-2"}""",
+                )
+
+                request.method == "GET" && path == "/v1/videos/video_1" -> {
+                    pollCount++
+                    jsonResponse(
+                        request,
+                        """{"id":"video_1","status":"completed","model":"sora-2","size":"1280x720"}""",
+                    )
+                }
+
+                request.method == "GET" && path == "/v1/videos/video_2" -> jsonResponse(
+                    request,
+                    """{"id":"video_2","status":"completed","video_url":"https://cdn.example.com/out.mp4"}""",
+                )
+
+                else -> error("unexpected request: ${request.method} $path")
+            }
+        }
+        val manager = MediaGenerationManager(client)
         val video = MediaGenerationModel(modelId = "sora-2", kind = MediaKind.VIDEO)
 
-        assertEquals(setOf(MediaKind.IMAGE), setting.supportedKinds)
-        val error = manager.create(setting, video, MediaGenerationRequest(prompt = "cat")).exceptionOrNull()
-        assertTrue(error is UnsupportedOperationException)
-        assertEquals("openai does not support VIDEO generation", error!!.message)
+        assertEquals(setOf(MediaKind.IMAGE, MediaKind.VIDEO), setting.supportedKinds)
+
+        val created = manager.create(
+            setting,
+            video,
+            MediaGenerationRequest(prompt = "一只飞翔的猫", aspectRatio = "16:9", durationSeconds = 8),
+        ).getOrThrow()
+        assertEquals("video_1", created.id)
+        assertEquals(MediaGenerationStatus.QUEUED, created.status)
+        assertTrue(requests.single().bodyAsString().contains("\"seconds\":\"8\""))
+
+        val queried = manager.query(setting, video, "video_1").getOrThrow()
+        assertEquals(1, pollCount)
+        assertEquals(MediaGenerationStatus.SUCCEEDED, queried.status)
+        assertEquals(
+            "https://example.com/v1/videos/video_1/content",
+            queried.outputs.single().url,
+        )
+        assertEquals(
+            mapOf("Authorization" to "Bearer sk-test"),
+            setting.downloadHeaders("https://example.com/v1/videos/video_1/content"),
+        )
+        assertTrue(setting.downloadHeaders("https://other-cdn.example.com/video.mp4").isEmpty())
+
+        val relayVideo = manager.query(setting, video, "video_2").getOrThrow()
+        assertEquals("https://cdn.example.com/out.mp4", relayVideo.outputs.single().url)
+
+        val miniMax = MediaGenerationProviderSetting.MiniMax(apiKey = "mm-test")
+        val unsupported = manager.create(
+            miniMax,
+            MediaGenerationModel(modelId = "image-01", kind = MediaKind.IMAGE),
+            MediaGenerationRequest(prompt = "cat"),
+        ).exceptionOrNull()
+        assertTrue(unsupported is UnsupportedOperationException)
+        assertEquals("minimax does not support IMAGE generation", unsupported!!.message)
     }
 }

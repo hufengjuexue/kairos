@@ -1,12 +1,12 @@
 {
-  "version": "1.4.0",
-  "versionCode": 200,
-  "publishedAt": "2026-11-14T18:30:00Z",
-  "changelog": "Kairos v1.4.0：\n\n1. 【Google 号池重构】单 Key 内按 Hydrogen → 3.8 → 3.6 吃强轮弱，全冷却 1 分钟回 #1/#2 3.5 Flash Lite 兜底；前 3 个主力 RPD 日满立刻切下一把 Key；3.5 Flash Lite / Embedding / Decision 限前 2 把 Key\n2. 【现代 VoiceDesign TTS】彻底移除 Gemini 3.1 / 2.5，保留 Gemini 3.8 双子星与 MiMo V2.5 TTS 全系并发/接力，支持自定义声线指令\n3. 【RP 前端收口】默认开启输入框（）快捷按钮，对话引号高亮新增 4 组快捷预设色点，TTS 引号/括号过滤合为三选一分段按钮",
+  "version": "1.4.1",
+  "versionCode": 201,
+  "publishedAt": "2026-11-14T20:33:00Z",
+  "changelog": "Kairos v1.4.1：\n\n1. 【媒体创作升级】彻底移除已弃用旧版生图页面与配置，补全媒体供应商拉取/识别视频模型（Sora / Veo / Seedance 等）及 OpenAI 视频生成支持\n2. 【液态玻璃修复】显式固定 AssistantBackground / ChatList / ChatListPreview 的 HazeSource 层级 zIndex，解决首次进入聊天页背景遮挡消息导致玻璃透不出来的问题\n3. 【Operit 风格对话地图】侧边常驻半透明定位胶囊，一点直接打开「跳转到消息」弹窗（实时定位第 X/N 条、关键词高亮搜索、仅看收藏、点击星标与字数统计）",
   "downloads": [
     {
-      "name": "kairos-1.4.0-arm64-v8a.apk",
-      "url": "https://github.com/hufengjuexue/kairos/releases/download/v1.4.0/kairos-1.4.0-arm64-v8a.apk",
+      "name": "kairos-1.4.1-arm64-v8a.apk",
+      "url": "https://github.com/hufengjuexue/kairos/releases/download/v1.4.1/kairos-1.4.1-arm64-v8a.apk",
       "size": "约 15.3 MB"
     }
   ]

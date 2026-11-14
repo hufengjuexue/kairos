@@ -189,7 +189,7 @@ internal fun ChatListPreview(
             modifier = Modifier
                 .fillMaxSize()
                 .topFadingEdge(listTop)
-                .hazeSource(state = hazeState),
+                .hazeSource(state = hazeState, zIndex = 2f),
         ) {
             if (loaded && filtered.isEmpty()) {
                 item(key = PreviewEmptyKey) {
@@ -518,7 +518,7 @@ private val QuoteRegex = Regex("(?m)^\\s{0,3}>\\s?")
 private val EmphasisRegex = Regex("\\*\\*|__|~~")
 private val WhitespaceRegex = Regex("\\s+")
 
-private fun UIMessage.toPreviewText(): String = toText()
+internal fun UIMessage.toPreviewText(): String = toText()
     .replace(CodeFenceRegex, " ")
     .replace(HeadingRegex, "")
     .replace(QuoteRegex, "")
@@ -545,7 +545,7 @@ private const val SnippetContextLength = 24
 // 卡片最多显示两行，留足宽屏和小字号的余量
 private const val SnippetMaxLength = 300
 
-private fun buildHighlightedText(
+internal fun buildHighlightedText(
     text: String,
     query: String,
     highlightColor: Color,

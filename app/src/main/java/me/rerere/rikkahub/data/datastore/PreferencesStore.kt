@@ -117,7 +117,6 @@ class SettingsStore internal constructor(
         val MEMORY_MODEL_REASONING_LEVEL = stringPreferencesKey("memory_model_reasoning_level")
         val TRANSLATE_MODEL = stringPreferencesKey("translate_model")
         val ENABLE_SUGGESTION = booleanPreferencesKey("enable_suggestion")
-        val IMAGE_GENERATION_MODEL = stringPreferencesKey("image_generation_model")
         val ENABLE_AUTO_TITLE = booleanPreferencesKey("enable_auto_title")
         val TITLE_PROMPT = stringPreferencesKey("title_prompt")
         val TRANSLATION_PROMPT = stringPreferencesKey("translation_prompt")
