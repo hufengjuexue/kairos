@@ -39,9 +39,15 @@ class MemoryFileVM(
             flowOf(MemoryFileState.Missing)
         } else {
             memoryRepository.getFilesFlow(memoryId).map { files ->
-                files.find { it.path == normalizedPath }?.let(MemoryFileState::Loaded) ?: MemoryFileState.Missing
+                val alias = MemoryFile.pinnedAliasOf(normalizedPath)
+                val resolved = files.find { it.path == normalizedPath }
+                    ?: alias?.let { alt -> files.find { it.path == alt } }
+                resolved?.let(MemoryFileState::Loaded) ?: MemoryFileState.Missing
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MemoryFileState.Loading)
+
+    private fun resolvedTargetPath(): String? =
+        (state.value as? MemoryFileState.Loaded)?.file?.path ?: normalizedPath
 
     /** 新建文件，路径已被占用时返回 [MemoryWriteResult.Conflict] */
     fun create(path: String, content: String, onResult: (MemoryWriteResult) -> Unit) {
@@ -51,14 +57,14 @@ class MemoryFileVM(
     }
 
     fun save(content: String, onResult: (MemoryWriteResult) -> Unit) {
-        val path = normalizedPath ?: return
+        val path = resolvedTargetPath() ?: return
         viewModelScope.launch {
             onResult(memoryRepository.writeFile(memoryId, path, content))
         }
     }
 
     fun delete(onDeleted: () -> Unit) {
-        val path = normalizedPath ?: return
+        val path = resolvedTargetPath() ?: return
         viewModelScope.launch {
             memoryRepository.deleteFile(memoryId, path)
             onDeleted()

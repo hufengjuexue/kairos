@@ -15,21 +15,21 @@ private val MEMORY_FORMAT_PROMPT = """
         aliases: [other names, short forms]
         ---
 
-        - [stated] A concrete fact, canon detail, preference, or shared event established in conversation
+        - A concrete fact, canon detail, preference, or shared event established in conversation
 
     Write the title, description, aliases and entries in the language used in the conversation. The path is only an identifier and can stay a short English slug; the title is what the user reads, so write 人物 / 设定 / 约定 rather than English headings when conversing in Chinese.
 
     ## Layout (one topic per file)
 
-    - /profile.md: who the user (or active user persona) is — name, role, traits, background and core facts that remain stable. Under 300 words.
-    - /preferences.md: how the user wants responses written — pacing, length, narrative voice, POV, tone, formatting, boundaries, and what to avoid.
+    - /core.md: identity, traits, core canon facts, backstory, and enduring agreements that remain stable across sessions.
+    - /state.md: current live phase, pacing, narrative voice, POV, response formatting, active boundaries, and what to avoid right now.
     - /topics/<domain>.md: stable background facts, tastes, worldbuilding lore, or recurring elements grouped by topic (e.g. world, habits, places, tastes, ...).
     - /arcs/<name>.md: ongoing storylines, multi-turn plot arcs, shared plans, or promises/goals with lasting stakes. Record turning points, constraints, and current state.
     - /people/<name-or-relation>.md: characters and people who matter for future continuity — their identity, personality traits, secrets, relationship dynamic with the user, and shared history.
 
     A fact goes in the file for the domain it belongs to, not whichever file happens to be open. Before creating a file, check the aliases in the listing; on a match, write to the existing file and add the alias. Link related subjects with [[name]].
 
-    ## The [stated] test
+    ## Factual & canon grounding
 
     Every line must trace directly to what was explicitly stated, agreed, or clearly established as canon in dialogue. Do not write:
     - Speculative leaps or generalizations ("liked one rainy walk" -> "loves all harsh weather")
@@ -38,7 +38,7 @@ private val MEMORY_FORMAT_PROMPT = """
     - Invented lore or embellishments not actually said or shown ("lives in the old town" -> do not invent an exact street number)
     - Meta assistant checklists ("## Next steps", "to follow up later")
 
-    Concrete character disclosures, mutual promises, accepted worldbuilding, unresolved vows, and relationship shifts that occurred in the scene ARE valid canon to record (note who holds the trait or made the promise clearly, e.g. "[stated] Character X revealed an old scar on her left shoulder" or "[stated] Agreed to meet at the clocktower at dusk").
+    Concrete character disclosures, mutual promises, accepted worldbuilding, unresolved vows, and relationship shifts that occurred in the scene ARE valid canon to record (note who holds the trait or made the promise clearly, e.g. "Character X revealed an old scar on her left shoulder" or "Agreed to meet at the clocktower at dusk").
 
     ## Calibration
 
@@ -51,7 +51,7 @@ private val MEMORY_FORMAT_PROMPT = """
 
     ## Sensitive and relationship information
 
-    - Health, emotions, intimacy, boundaries, relationship dynamics and roleplay agreements: record them faithfully in specific, concrete words in their corresponding topic or preference files when relevant for future continuity.
+    - Health, emotions, intimacy, boundaries, relationship dynamics and roleplay agreements: record them faithfully in specific, concrete words in their corresponding deeper topic files when relevant for future continuity.
     - Keep sensitive facts out of description and aliases; description names only the topic, e.g. "health related" or "intimacy & boundaries".
     - Never store real-world credentials or government identifiers: real ID or passport numbers, bank card or account numbers, or passwords.
     - Persona preferences, interaction style, tone and shared agreements between the character and user should be preserved accurately rather than sanitized or refused.
@@ -61,7 +61,7 @@ private val MEMORY_FORMAT_PROMPT = """
     - Read before you edit, and pass if_version. On a version conflict, merge based on the returned latest content and retry.
     - Keep history when a state changes: "on the infra team (previously on search)".
     - If an edit makes description inaccurate, fix it in the same edit.
-    - When a file approaches its size limit, merge duplicates and drop outdated details instead of squeezing more in.
+    - Merge duplicates and supersede outdated details cleanly as facts evolve, keeping continuity intact.
     </memory_format>
 """.trimIndent()
 
@@ -81,7 +81,7 @@ private val MEMORY_SYSTEM_RULES = """
     - When you need multi-hop relationships or temporal continuity ("who is currently allied with whom", "what changed between A and B over time", "who currently holds item X"), call recall_relations with mode="network" or mode="timeline".
     - Do not call memory_read or recall_relations for generic factual/standalone questions that do not depend on shared history.
     - Before claiming something has no prior context or forgetting an established name/detail, read any listing files or graph timeline that could plausibly cover it.
-    - profile and preferences are already included above; do not read them again. Their version attribute can be passed as if_version directly.
+    - core (/core.md) and state (/state.md) are already included above; do not read them again. Their version attribute can be passed as if_version directly.
 
     ## How to apply
 
@@ -90,7 +90,7 @@ private val MEMORY_SYSTEM_RULES = """
     - Unresolved threads and open promises are quiet continuity anchors, not an aggressive checklist: weave them in naturally only when relevant to the moment.
     - Sensitive facts (health, intimacy, trauma, boundaries) enter dialogue only when naturally invoked by the scene, explicitly raised, or required to stay faithful to established boundaries.
     - Weave memories seamlessly in-character or in natural voice. Never break immersion by saying "according to my memory" or "I remember the memory file says" (unless the user explicitly asks about the memory system).
-    - Narrative voice, pacing, persona, and interaction rules in preferences apply consistently.
+    - Narrative voice, pacing, persona, and interaction rules in /core.md or /state.md apply consistently.
 
     ## When to write
 
@@ -115,11 +115,11 @@ private val MEMORY_CONSOLIDATION_INTRO = """
 private val MEMORY_CONSOLIDATION_WORKFLOW = """
     ## Workflow
 
-    1. Extract durable facts and canon continuity from <new_turns> that pass the [stated] test and continuity calibration — covering both what the user stated (identity, tastes, preferences, choices) and explicit character disclosures, mutual promises, relationship shifts, or established plot/scene facts that actually held across the exchange. Use <recent_context> only for disambiguating context.
+    1. Extract durable facts and canon continuity from <new_turns> that pass factual grounding and continuity calibration — covering both what the user stated (identity, tastes, preferences, choices) and explicit character disclosures, mutual promises, relationship shifts, or established plot/scene facts that actually held across the exchange. Use <recent_context> only for disambiguating context.
     2. Drop anything the memory store already has (a rephrasing counts as already there).
     3. Group the rest by target file: one write operation per file; sensitive facts get their own operation, last.
-    4. For existing files: memory_read first, then memory_str_replace or memory_append. For new files: memory_write with if_version="new". The version attribute on profile and preferences can be passed as if_version directly.
-    5. Only touch files you are adding new facts to. While you are in such a file you may also merge lines that say the same thing and correct lines the new turns made outdated. Leave every other file alone.
+    4. For existing files: memory_read first, then memory_str_replace or memory_append. For new files: memory_write with if_version="new". The version attribute on core and state can be passed as if_version directly.
+    5. Only touch files you are adding new facts to. Exception (hot-cold sync): whenever a turn updates or revokes an active boundary, baseline, or current state stored in /topics/*.md, /arcs/*.md, or /people/*.md, synchronously update /core.md (e.g. ## 此刻) or /state.md in the same run (removing or marking superseded old states) so pinned hot memory never lags behind cold files. While you are in any touched file you may also merge lines that say the same thing and correct lines the new turns made outdated. Leave every other file alone.
     6. Temporal relation graph (<temporal_relation_graph>): whenever <new_turns> establish or shift a concrete relationship, loyalty, location, item custody, vow, or status between two entities, check existing edges with recall_relations(mode="timeline") and record/supersede the edge via graph_upsert_relations (passing replace_relation_types or supersede_edge_ids when an old state is replaced so timeline history stays intact). Skip trivial transient actions.
 
     ## Reading the conversations
@@ -128,7 +128,7 @@ private val MEMORY_CONSOLIDATION_WORKFLOW = """
     - A message ending in "..." was cut off. Call conversation_read when the missing part matters.
     - conversation_search looks through the user's earlier conversations. Use it to check whether a taste or hobby came up before (see Calibration), not to mine old conversations for more facts.
 
-    Most runs should produce zero to two records, often zero. If nothing is worth recording, finish without calling any tool.
+    Calibrate output to the actual density of the turns: casual or repetitive turns should produce zero records, while high-density turns or pre-compression batches should capture all durable facts and state transitions without an arbitrary count cap. If nothing is worth recording, finish without calling any tool.
     Better to miss one uncertain fact than to record one inference.
     When done, output a one-line summary (what you wrote, or "none") and nothing else.
 """.trimIndent()
@@ -160,7 +160,7 @@ internal fun buildMemoryConsolidationPrompt(fullReview: Boolean): String = build
     }
 }
 
-/** 主对话 system prompt 里的记忆片段：全文注入 profile 和 preferences，其余文件只给清单 */
+/** 主对话 system prompt 里的记忆片段：全文注入 core 和 state，其余文件只给清单 */
 internal fun buildMemoryPrompt(files: List<MemoryFile>): String = buildString {
     appendLine("<memory_system>")
     appendLine(MEMORY_SYSTEM_INTRO)
@@ -207,12 +207,16 @@ internal fun buildMemoryConsolidationInput(
 }.trimEnd()
 
 private fun StringBuilder.appendMemoryState(files: List<MemoryFile>) {
-    appendPinnedFile("profile", files.find { it.path == MemoryFile.PROFILE_PATH })
+    val coreFile = files.find { it.path == MemoryFile.CORE_PATH }
+        ?: files.find { it.path == MemoryFile.LEGACY_PROFILE_PATH }
+    val stateFile = files.find { it.path == MemoryFile.STATE_PATH }
+        ?: files.find { it.path == MemoryFile.LEGACY_PREFERENCES_PATH }
+    appendPinnedFile("core", coreFile)
     appendLine()
-    appendPinnedFile("preferences", files.find { it.path == MemoryFile.PREFERENCES_PATH })
+    appendPinnedFile("state", stateFile)
     appendLine()
     appendLine("<memory_listing>")
-    val listed = files.filter { it.path != MemoryFile.PROFILE_PATH && it.path != MemoryFile.PREFERENCES_PATH }
+    val listed = files.filterNot { MemoryFile.isPinnedPath(it.path) }
     if (listed.isEmpty()) {
         appendLine("(no files yet)")
     } else {

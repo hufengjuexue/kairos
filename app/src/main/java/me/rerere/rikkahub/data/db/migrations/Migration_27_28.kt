@@ -26,14 +26,14 @@ val Migration_27_28 = object : Migration(27, 28) {
                 }
             }
 
-            // 旧记忆每次都会完整注入，迁到同样会完整注入的 profile 里，升级后模型看到的内容不变
+            // 旧记忆每次都会完整注入，迁到同样会完整注入的 core 里，升级后模型看到的内容不变
             val now = System.currentTimeMillis()
             var migratedCount = 0
             memories.forEach { (assistantId, contents) ->
-                val profile = legacyMemoriesToProfile(contents) ?: return@forEach
+                val core = legacyMemoriesToProfile(contents) ?: return@forEach
                 db.execSQL(
                     "INSERT INTO memory_file (assistant_id, path, content, updated_at) VALUES (?, ?, ?, ?)",
-                    arrayOf<Any?>(assistantId, MemoryFile.PROFILE_PATH, profile, now)
+                    arrayOf<Any?>(assistantId, MemoryFile.CORE_PATH, core, now)
                 )
                 migratedCount++
             }
@@ -48,7 +48,7 @@ val Migration_27_28 = object : Migration(27, 28) {
     }
 }
 
-/** 把旧的逐条记忆拼成一份 profile 文件，没有有效内容时返回 null */
+/** 把旧的逐条记忆拼成一份 core 文件，没有有效内容时返回 null */
 internal fun legacyMemoriesToProfile(contents: List<String>): String? {
     val lines = contents
         .map { it.lines().joinToString(" ") { line -> line.trim() }.trim() }
@@ -56,7 +56,7 @@ internal fun legacyMemoriesToProfile(contents: List<String>): String? {
     if (lines.isEmpty()) return null
     return buildString {
         appendLine("---")
-        appendLine("name: profile")
+        appendLine("name: core")
         appendLine("description: Who the user is")
         appendLine("---")
         appendLine()

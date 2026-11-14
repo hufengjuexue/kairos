@@ -62,11 +62,13 @@ class MemoryToolsTest {
 
     @Test
     fun `memory_read accepts a single path string`() = runBlocking {
-        repository.writeFile("assistant", "/profile.md", "- [stated] Name is Lin\n")
+        repository.writeFile("assistant", "/core.md", "- [stated] Name is Lin\n")
 
-        val read = call(MemoryToolNames.READ) { put("path", "/profile.md") }
+        val read = call(MemoryToolNames.READ) { put("path", "/core.md") }
+        val aliasRead = call(MemoryToolNames.READ) { put("path", "/profile.md") }
 
-        assertEquals("/profile.md", read.getValue("files").jsonArray.single().jsonObject.string("path"))
+        assertEquals("/core.md", read.getValue("files").jsonArray.single().jsonObject.string("path"))
+        assertEquals("/core.md", aliasRead.getValue("files").jsonArray.single().jsonObject.string("path"))
     }
 
     @Test
@@ -115,7 +117,7 @@ class MemoryToolsTest {
             put("if_version", "new")
         }
         val id = call(MemoryToolNames.WRITE) {
-            put("path", "/profile.md")
+            put("path", "/core.md")
             put("content", "- [stated] 身份证号11010519491231002X\n")
             put("if_version", "new")
         }

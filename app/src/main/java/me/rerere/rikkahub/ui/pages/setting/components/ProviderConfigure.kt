@@ -1474,7 +1474,7 @@ internal fun KairosRpGuideDialog(
                             title = "终极玩法 A：AIS 自建多项目免费号池（配齐三模型 API）",
                             body = "• Google AI Studio 简直是为这 3 个模型量身定做：单个独立项目每天免费给 3.6 Flash (20) + 3.8 Flash (20) + 4 Hydrogen (20) 共 60 次主力对话，外加 Embedding 2 (1,000 次/日) 和 Decision 1 (10,000 次/日)！\n" +
                                 "• 避坑铁律：同项目多建 Key 额度共享无效！必须点「创建新项目」，每项目只拿 1 把 Key（中性命名如 rp-01，别一口气暴建）。\n" +
-                                "• 回到 Google 设置页点「批量导入」，策略保留默认「顺序吃空」防跨项目横跳风控（同 Key 的 Hydrogen 耗尽不误伤 3.8/3.6）；「Embedding / Decision 专用 Key」留空锁定复用 #1 即可。",
+                                "• 回到 Google 设置页点「批量导入」直接粘贴多项目 Key 保存即可：单 Key 内自动按 Hydrogen → 3.8 → 3.6 吃强轮弱（1 分钟全冷却回 #1/#2 的 3.5fl 兜底，前 3 个 RPD 日满立刻切下一把 Key 不等 500；3.5fl / Embedding / Decision 自动锁定前 2 把 Key），无需手动调任何开关。",
                         )
                         GoogleGuideSectionCard(
                             title = "终极玩法 B：官方 Gemini App + NotebookLM 绿色 RP",

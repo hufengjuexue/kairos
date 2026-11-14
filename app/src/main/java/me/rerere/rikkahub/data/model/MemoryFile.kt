@@ -58,10 +58,32 @@ data class MemoryFile(
     }
 
     companion object {
-        const val PROFILE_PATH = "/profile.md"
-        const val PREFERENCES_PATH = "/preferences.md"
-        const val MAX_BYTES = 48 * 1024
+        const val CORE_PATH = "/core.md"
+        const val STATE_PATH = "/state.md"
+        const val LEGACY_PROFILE_PATH = "/profile.md"
+        const val LEGACY_PREFERENCES_PATH = "/preferences.md"
+        const val MAX_BYTES = 512 * 1024
         private const val MAX_PATH_LENGTH = 128
+
+        val PINNED_PATHS = setOf(CORE_PATH, STATE_PATH, LEGACY_PROFILE_PATH, LEGACY_PREFERENCES_PATH)
+
+        fun isPinnedPath(path: String): Boolean = path in PINNED_PATHS
+
+        /** 兼容旧路径：写入新建时统一落到 /core.md 与 /state.md */
+        fun canonicalPinnedPath(path: String): String = when (path) {
+            LEGACY_PROFILE_PATH -> CORE_PATH
+            LEGACY_PREFERENCES_PATH -> STATE_PATH
+            else -> path
+        }
+
+        /** 双向别名映射，供读写和删除时兼容旧数据库与外部技能调用 */
+        fun pinnedAliasOf(path: String): String? = when (path) {
+            CORE_PATH -> LEGACY_PROFILE_PATH
+            LEGACY_PROFILE_PATH -> CORE_PATH
+            STATE_PATH -> LEGACY_PREFERENCES_PATH
+            LEGACY_PREFERENCES_PATH -> STATE_PATH
+            else -> null
+        }
 
         /** 规范化模型或用户给出的路径，不合法时返回 null */
         fun normalizePath(raw: String): String? {
@@ -85,8 +107,13 @@ private fun String.toSingleLine(): String = replace(Regex("\\s+"), " ").trim()
 private val statedMarkerRegex = Regex("""(?m)^(\s*[-*+]\s+)\[stated\]\s*""", RegexOption.IGNORE_CASE)
 
 // 每次都全文注入的两个文件排在最前，其余目录按记忆格式约定的顺序
-private val pinnedPathOrder = listOf(MemoryFile.PROFILE_PATH, MemoryFile.PREFERENCES_PATH)
-private val directoryOrder = listOf("/", "/topics", "/areas", "/people")
+private val pinnedPathOrder = listOf(
+    MemoryFile.CORE_PATH,
+    MemoryFile.STATE_PATH,
+    MemoryFile.LEGACY_PROFILE_PATH,
+    MemoryFile.LEGACY_PREFERENCES_PATH,
+)
+private val directoryOrder = listOf("/", "/topics", "/areas", "/arcs", "/people")
 
 private fun <T> List<T>.orderOf(item: T) = indexOf(item).let { if (it < 0) size else it }
 

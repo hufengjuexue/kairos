@@ -1,12 +1,12 @@
 {
-  "version": "1.4.1",
-  "versionCode": 201,
-  "publishedAt": "2026-11-14T21:47:26Z",
-  "changelog": "Kairos v1.4.1：\n\n1. 【媒体创作升级】彻底移除已弃用旧版生图页面与配置，补全媒体供应商拉取/识别视频模型（Sora / Veo / Seedance 等）及 OpenAI 视频生成支持\n2. 【液态玻璃修复】显式固定 AssistantBackground / ChatList / ChatListPreview 的 HazeSource 层级 zIndex，解决首次进入聊天页背景遮挡消息导致玻璃透不出来的问题\n3. 【Operit 风格对话地图】侧边常驻半透明定位胶囊，一点直接打开「跳转到消息」弹窗（实时定位第 X/N 条、关键词高亮搜索、仅看收藏、点击星标与字数统计）",
+  "version": "1.4.2",
+  "versionCode": 202,
+  "publishedAt": "2026-11-15T00:00:00Z",
+  "changelog": "Kairos v1.4.2：\n\n1. 【RP 记忆体系重构】置顶核心记忆统一为 /core.md（人物关系与设定）与 /state.md（当前状态与伏笔），启动与导入旧备份时自动幂等迁移旧路径；剔除机械 [stated] 前缀，记忆整理升级为冷热联动同步\n2. 【无损分片与压缩前全量打捞】移除尾注记忆 420 字硬截断，改为按完整 Markdown 段落切块（超长段按 1800 字安全边界切分）；压缩检查点前全量打捞待折叠轮次并放宽单条截断上限\n3. 【三阶 RP 教程收口】内置 6 页三阶新手指引（从 1 把 Key 极速开局到号池接力与 Gemini App + NotebookLM 静态下沉工作流），设置主页顶栏常驻一键重看入口",
   "downloads": [
     {
-      "name": "kairos-1.4.1-arm64-v8a.apk",
-      "url": "https://github.com/hufengjuexue/kairos/releases/download/v1.4.1/kairos-1.4.1-arm64-v8a.apk",
+      "name": "kairos-1.4.2-arm64-v8a.apk",
+      "url": "https://github.com/hufengjuexue/kairos/releases/download/v1.4.2/kairos-1.4.2-arm64-v8a.apk",
       "size": "约 15.3 MB"
     }
   ]

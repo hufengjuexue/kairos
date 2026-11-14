@@ -54,11 +54,11 @@ private const val MAX_CONVERSATIONS_PER_RUN = 8
 // 找待整理的对话时最多读这么多个候选：每个都要把消息读出来，刚开启记忆时候选可能有几百个
 private const val MAX_SCANNED_CONVERSATIONS = 50
 private const val MAX_TURNS_PER_CONVERSATION = 12
-private const val MAX_TRANSCRIPT_LENGTH = 60_000
+private const val MAX_TRANSCRIPT_LENGTH = 120_000
 private const val RECENT_CONTEXT_MESSAGES = 6
-private const val RECENT_CONTEXT_MESSAGE_LENGTH = 500
+private const val RECENT_CONTEXT_MESSAGE_LENGTH = 1500
 private const val USER_MESSAGE_LENGTH = 8000
-private const val ASSISTANT_MESSAGE_LENGTH = 2000
+private const val ASSISTANT_MESSAGE_LENGTH = 8000
 
 // 更早的对话不再补整理：刚开启记忆或导入了一批旧对话时，不该把整段历史都交给模型
 private const val PENDING_WINDOW_MS = 7L * 24 * 60 * 60 * 1000
@@ -173,6 +173,7 @@ class MemoryConsolidator(
             messages = dialogue,
             updatedAt = conversation.updateAt.toEpochMilli(),
             consolidatedAt = consolidatedAt,
+            maxTurns = Int.MAX_VALUE,
         )
         if (pending.turns.isEmpty()) {
             pending.consolidatedThrough?.let { advance(conversation.id, it) }
@@ -293,10 +294,14 @@ class MemoryConsolidator(
         }
 
         val steps = finished.message.getTools()
-        val touched = steps.mapNotNull { it.memoryWritePath() }
-            .map { MemoryFile.normalizePath(it) ?: it }
-            .distinct()
         val remaining = memoryRepository.getFiles(memoryId).associateBy { it.path }
+        val touched = steps.mapNotNull { it.memoryWritePath() }
+            .map { raw ->
+                val norm = MemoryFile.normalizePath(raw) ?: raw
+                if (norm in remaining) norm
+                else MemoryFile.pinnedAliasOf(norm)?.takeIf { it in remaining } ?: MemoryFile.canonicalPinnedPath(norm)
+            }
+            .distinct()
         return MemoryConsolidationRun(
             memoryId = memoryId,
             finishedAt = System.currentTimeMillis(),
@@ -459,6 +464,7 @@ internal fun pendingMemoryTurns(
     updatedAt: Long,
     consolidatedAt: Long,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    maxTurns: Int = MAX_TURNS_PER_CONVERSATION,
 ): PendingMemoryTurns {
     fun UIMessage.time() = createdAt.toInstant(timeZone).toEpochMilliseconds()
 
@@ -473,7 +479,7 @@ internal fun pendingMemoryTurns(
     }
 
     pending = pending.filter { it.hasUserText }
-    val batch = pending.take(MAX_TURNS_PER_CONVERSATION)
+    val batch = pending.take(maxTurns)
     if (batch.isNotEmpty()) {
         val batchEnd = batch.last().userMessage.time()
         // 积压超过一次能处理的量（比如模型连续失败）时从最早的开始，进度只推进到这一批为止，
