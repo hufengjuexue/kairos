@@ -1934,4 +1934,13 @@
   <string name="chat_message_tool_phone_use_open_app_name">Open app: %1$s</string>
   <string name="chat_message_tool_phone_use_list_apps">List apps</string>
   <string name="chat_message_tool_phone_use_wait">Wait %1$s seconds</string>
+  <string name="chat_page_scroll_to_top">Scroll to top</string>
+  <string name="chat_message_map_title">Jump to Message</string>
+  <string name="chat_message_map_current_position">Current: %1$d / %2$d</string>
+  <string name="chat_message_map_hint">Tap any message to jump quickly</string>
+  <string name="chat_message_map_role_user">User</string>
+  <string name="chat_message_map_role_ai">AI</string>
+  <string name="chat_message_map_filter_favorite">Filter favorites</string>
+  <string name="chat_message_map_empty">No matching messages</string>
+  <string name="chat_message_map_media_only">[Attachment]</string>
 </resources>

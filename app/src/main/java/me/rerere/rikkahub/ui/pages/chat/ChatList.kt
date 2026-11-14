@@ -161,6 +161,7 @@ fun ChatList(
                 onClearTranslation = onClearTranslation,
                 onToolApproval = onToolApproval,
                 onToolAnswer = onToolAnswer,
+                onJumpToMessage = onJumpToMessage,
                 onToggleFavorite = onToggleFavorite,
                 onConversationSystemPromptChange = onConversationSystemPromptChange,
                 selectionState = selectionState,
@@ -233,13 +234,13 @@ private fun ChatListNormal(
     onClearTranslation: (UIMessage) -> Unit,
     onToolApproval: ((toolCallId: String, approved: Boolean, reason: String) -> Unit)? = null,
     onToolAnswer: ((toolCallId: String, answer: String) -> Unit)? = null,
+    onJumpToMessage: (Int) -> Unit = {},
     onToggleFavorite: ((MessageNode) -> Unit)? = null,
     onConversationSystemPromptChange: ((String?) -> Unit)? = null,
     selectionState: ChatSelectionState,
 ) {
     val scope = rememberCoroutineScope()
     val loadingState by rememberUpdatedState(loading)
-    var isRecentScroll by remember { mutableStateOf(false) }
     val conversationUpdated by rememberUpdatedState(conversation)
     val density = LocalDensity.current
     val activity = LocalContext.current as? me.rerere.rikkahub.RouteActivity
@@ -315,18 +316,6 @@ private fun ChatListNormal(
             }
         }
 
-        // 判断最近是否滚动
-        LaunchedEffect(state.isScrollInProgress) {
-            if (state.isScrollInProgress) {
-                isRecentScroll = true
-                delay(1500)
-                isRecentScroll = false
-            } else {
-                delay(1500)
-                isRecentScroll = false
-            }
-        }
-
         ChatFontProvider(displaySetting = settings.displaySetting) {
             LazyColumn(
                 state = state,
@@ -340,7 +329,7 @@ private fun ChatListNormal(
                 modifier = Modifier
                     .fillMaxSize()
                     .topFadingEdge(innerPadding.calculateTopPadding() + 24.dp)
-                    .hazeSource(state = hazeState),
+                    .hazeSource(state = hazeState, zIndex = 1f),
             ) {
             itemsIndexed(
                 items = conversation.messageNodes,
@@ -489,12 +478,18 @@ private fun ChatListNormal(
 
             val captureProgress = LocalScrollCaptureInProgress.current
 
-            // 消息快速跳转
+            // 消息快速跳转与 Operit 风格对话地图触发器
             MessageJumper(
-                show = isRecentScroll && !state.isScrollInProgress && settings.displaySetting.showMessageJumper && !captureProgress,
+                show = settings.displaySetting.showMessageJumper &&
+                    conversation.messageNodes.isNotEmpty() &&
+                    !selectionState.selecting &&
+                    !captureProgress,
                 onLeft = settings.displaySetting.messageJumperOnLeft,
                 scope = scope,
-                state = state
+                state = state,
+                conversation = conversation,
+                onJumpToMessage = onJumpToMessage,
+                onToggleFavorite = onToggleFavorite,
             )
 
             // Suggestion
