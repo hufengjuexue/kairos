@@ -154,6 +154,21 @@ class MemoryConsolidatorTest {
     }
 
     @Test
+    fun `unbounded batch processes all pending turns without dropping turns past 12`() {
+        val result = pendingMemoryTurns(
+            messages = longChat,
+            updatedAt = timeOf(31),
+            consolidatedAt = 0,
+            timeZone = zone,
+            maxTurns = Int.MAX_VALUE,
+        )
+
+        assertEquals(15, result.totalTurns)
+        assertEquals(15, result.turns.size)
+        assertEquals(timeOf(31), result.consolidatedThrough)
+    }
+
+    @Test
     fun `a conversation seen for the first time only looks back one batch`() {
         val start = initialMemoryProgress(longChat, zone)
 

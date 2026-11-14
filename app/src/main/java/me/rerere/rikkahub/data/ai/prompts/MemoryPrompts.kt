@@ -15,7 +15,7 @@ private val MEMORY_FORMAT_PROMPT = """
         aliases: [other names, short forms]
         ---
 
-        - [stated] A concrete fact, canon detail, preference, or shared event established in conversation
+        - A concrete fact, canon detail, preference, or shared event established in conversation
 
     Write the title, description, aliases and entries in the language used in the conversation. The path is only an identifier and can stay a short English slug; the title is what the user reads, so write 人物 / 设定 / 约定 rather than English headings when conversing in Chinese.
 
@@ -29,7 +29,7 @@ private val MEMORY_FORMAT_PROMPT = """
 
     A fact goes in the file for the domain it belongs to, not whichever file happens to be open. Before creating a file, check the aliases in the listing; on a match, write to the existing file and add the alias. Link related subjects with [[name]].
 
-    ## The [stated] test
+    ## Factual & canon grounding
 
     Every line must trace directly to what was explicitly stated, agreed, or clearly established as canon in dialogue. Do not write:
     - Speculative leaps or generalizations ("liked one rainy walk" -> "loves all harsh weather")
@@ -38,7 +38,7 @@ private val MEMORY_FORMAT_PROMPT = """
     - Invented lore or embellishments not actually said or shown ("lives in the old town" -> do not invent an exact street number)
     - Meta assistant checklists ("## Next steps", "to follow up later")
 
-    Concrete character disclosures, mutual promises, accepted worldbuilding, unresolved vows, and relationship shifts that occurred in the scene ARE valid canon to record (note who holds the trait or made the promise clearly, e.g. "[stated] Character X revealed an old scar on her left shoulder" or "[stated] Agreed to meet at the clocktower at dusk").
+    Concrete character disclosures, mutual promises, accepted worldbuilding, unresolved vows, and relationship shifts that occurred in the scene ARE valid canon to record (note who holds the trait or made the promise clearly, e.g. "Character X revealed an old scar on her left shoulder" or "Agreed to meet at the clocktower at dusk").
 
     ## Calibration
 
@@ -51,7 +51,7 @@ private val MEMORY_FORMAT_PROMPT = """
 
     ## Sensitive and relationship information
 
-    - Health, emotions, intimacy, boundaries, relationship dynamics and roleplay agreements: record them faithfully in specific, concrete words in their corresponding topic or preference files when relevant for future continuity.
+    - Health, emotions, intimacy, boundaries, relationship dynamics and roleplay agreements: record them faithfully in specific, concrete words in their corresponding deeper topic files when relevant for future continuity.
     - Keep sensitive facts out of description and aliases; description names only the topic, e.g. "health related" or "intimacy & boundaries".
     - Never store real-world credentials or government identifiers: real ID or passport numbers, bank card or account numbers, or passwords.
     - Persona preferences, interaction style, tone and shared agreements between the character and user should be preserved accurately rather than sanitized or refused.
@@ -90,7 +90,7 @@ private val MEMORY_SYSTEM_RULES = """
     - Unresolved threads and open promises are quiet continuity anchors, not an aggressive checklist: weave them in naturally only when relevant to the moment.
     - Sensitive facts (health, intimacy, trauma, boundaries) enter dialogue only when naturally invoked by the scene, explicitly raised, or required to stay faithful to established boundaries.
     - Weave memories seamlessly in-character or in natural voice. Never break immersion by saying "according to my memory" or "I remember the memory file says" (unless the user explicitly asks about the memory system).
-    - Narrative voice, pacing, persona, and interaction rules in preferences apply consistently.
+    - Narrative voice, pacing, persona, and interaction rules in /core.md or /state.md apply consistently.
 
     ## When to write
 
@@ -115,11 +115,11 @@ private val MEMORY_CONSOLIDATION_INTRO = """
 private val MEMORY_CONSOLIDATION_WORKFLOW = """
     ## Workflow
 
-    1. Extract durable facts and canon continuity from <new_turns> that pass the [stated] test and continuity calibration — covering both what the user stated (identity, tastes, preferences, choices) and explicit character disclosures, mutual promises, relationship shifts, or established plot/scene facts that actually held across the exchange. Use <recent_context> only for disambiguating context.
+    1. Extract durable facts and canon continuity from <new_turns> that pass factual grounding and continuity calibration — covering both what the user stated (identity, tastes, preferences, choices) and explicit character disclosures, mutual promises, relationship shifts, or established plot/scene facts that actually held across the exchange. Use <recent_context> only for disambiguating context.
     2. Drop anything the memory store already has (a rephrasing counts as already there).
     3. Group the rest by target file: one write operation per file; sensitive facts get their own operation, last.
     4. For existing files: memory_read first, then memory_str_replace or memory_append. For new files: memory_write with if_version="new". The version attribute on core and state can be passed as if_version directly.
-    5. Only touch files you are adding new facts to. While you are in such a file you may also merge lines that say the same thing and correct lines the new turns made outdated. Leave every other file alone.
+    5. Only touch files you are adding new facts to. Exception (hot-cold sync): whenever a turn updates or revokes an active boundary, baseline, or current state stored in /topics/*.md, /arcs/*.md, or /people/*.md, synchronously update /core.md (e.g. ## 此刻) or /state.md in the same run (removing or marking superseded old states) so pinned hot memory never lags behind cold files. While you are in any touched file you may also merge lines that say the same thing and correct lines the new turns made outdated. Leave every other file alone.
     6. Temporal relation graph (<temporal_relation_graph>): whenever <new_turns> establish or shift a concrete relationship, loyalty, location, item custody, vow, or status between two entities, check existing edges with recall_relations(mode="timeline") and record/supersede the edge via graph_upsert_relations (passing replace_relation_types or supersede_edge_ids when an old state is replaced so timeline history stays intact). Skip trivial transient actions.
 
     ## Reading the conversations
@@ -128,7 +128,7 @@ private val MEMORY_CONSOLIDATION_WORKFLOW = """
     - A message ending in "..." was cut off. Call conversation_read when the missing part matters.
     - conversation_search looks through the user's earlier conversations. Use it to check whether a taste or hobby came up before (see Calibration), not to mine old conversations for more facts.
 
-    Most runs should produce zero to two records, often zero. If nothing is worth recording, finish without calling any tool.
+    Calibrate output to the actual density of the turns: casual or repetitive turns should produce zero records, while high-density turns or pre-compression batches should capture all durable facts and state transitions without an arbitrary count cap. If nothing is worth recording, finish without calling any tool.
     Better to miss one uncertain fact than to record one inference.
     When done, output a one-line summary (what you wrote, or "none") and nothing else.
 """.trimIndent()

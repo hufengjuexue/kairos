@@ -98,4 +98,17 @@ class MemoryPromptTest {
         assertFalse(buildMemoryConsolidationPrompt(fullReview = false).contains("## Full review"))
         assertTrue(buildMemoryConsolidationPrompt(fullReview = true).contains("## Full review"))
     }
+
+    @Test
+    fun `prompts do not force bracketed stated tags or arbitrary two-record caps`() {
+        val memoryPrompt = buildMemoryPrompt(emptyList())
+        val consolidationPrompt = buildMemoryConsolidationPrompt(fullReview = false)
+
+        assertFalse(memoryPrompt.contains("[stated]"))
+        assertFalse(memoryPrompt.contains("topic or preference files"))
+        assertFalse(consolidationPrompt.contains("[stated]"))
+        assertFalse(consolidationPrompt.contains("zero to two records"))
+        assertTrue(memoryPrompt.contains("## Factual & canon grounding"))
+        assertTrue(consolidationPrompt.contains("hot-cold sync"))
+    }
 }
