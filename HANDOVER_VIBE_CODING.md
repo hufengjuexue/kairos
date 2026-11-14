@@ -1,4 +1,4 @@
-# Kairos 工程交接文档（v1.3.1 · `E:\kairos`）
+# Kairos 工程交接文档（v1.4.2 · `E:\kairos`）
 
 写给接下来接手的开发者与 AI Agent。看这份即可掌握当前仓库形态、双轨分支纪律与核心架构，无需翻查早年“华灯 / 终极 RP”过渡记录。
 
@@ -10,7 +10,7 @@
 - **GitHub 仓库**：`hufengjuexue/kairos`（`myfork` 指向该仓库；`upstream` 指向原版 `RikkaHub`）
 - **本地工作目录**：`E:\kairos`
 - **Android 包名**：`me.kairos.app`（与原版 RikkaHub 彻底隔离共存，使用独立自适应 Lain 图标）
-- **当前版本**：`v1.3.1`（`versionCode = 198`，紧接 `v1.3.0` / `197`；`update.json` 与 `UpdateChecker.kt` 均已对齐 `hufengjuexue/kairos`）
+- **当前版本**：`v1.4.2`（`versionCode = 202`，紧接 `v1.4.1` / `201`；`update.json` 与 `UpdateChecker.kt` 均已对齐 `hufengjuexue/kairos`）
 - **编译与测试环境**：Windows 宿主机与 WSL2 无本地 JDK / Android SDK，统一由 `.github/workflows/build.yml` 在 GitHub Actions（Java 21 + `setup-android-native`）执行 **全模块 JVM 单元测试 + `assembleGithubRelease`** 并自动发布 GitHub Release（`arm64-v8a` / `universal` APK）。
 
 ---
