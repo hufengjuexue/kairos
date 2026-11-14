@@ -14,15 +14,22 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlin.uuid.Uuid
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
 import me.rerere.hugeicons.stroke.Delete01
+import me.rerere.hugeicons.stroke.Refresh01
 import me.rerere.mediagen.model.MediaGenerationModel
 import me.rerere.mediagen.model.MediaKind
+import me.rerere.mediagen.model.inferMediaKind
 import me.rerere.mediagen.provider.MediaGenerationProviderSetting
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.ui.CardGroup
@@ -30,6 +37,8 @@ import me.rerere.rikkahub.ui.components.ui.CardGroupIcon
 import me.rerere.rikkahub.ui.components.ui.CardGroupValue
 import me.rerere.rikkahub.ui.components.ui.ConnectedChoiceButtons
 import me.rerere.rikkahub.ui.components.ui.ConnectedChoiceLabel
+import me.rerere.rikkahub.ui.components.ui.Tag
+import me.rerere.rikkahub.ui.components.ui.TagType
 
 val MediaGenerationProviderSetting.typeName: String
     @Composable get() = when (this) {
@@ -138,6 +147,8 @@ fun MediaGenerationProviderModelsConfigure(
     val models = setting.models
     // 按枚举顺序排列，保证按钮组的顺序稳定
     val kinds = MediaKind.entries.filter { it in setting.supportedKinds }
+    var manualKindIds by remember(setting.id) { mutableStateOf(emptySet<Uuid>()) }
+    var showRemoteSheet by remember { mutableStateOf(false) }
 
     fun updateModels(models: List<MediaGenerationModel>) {
         onValueChange(setting.copyProvider(models = models))
@@ -154,12 +165,32 @@ fun MediaGenerationProviderModelsConfigure(
                         OutlinedTextField(
                             value = model.modelId,
                             onValueChange = { value ->
-                                updateModels(models.map { if (it.id == model.id) model.copy(modelId = value.trim()) else it })
+                                val trimmed = value.trim()
+                                val inferredKind = inferMediaKind(trimmed)
+                                val nextKind = if (model.id !in manualKindIds && inferredKind in kinds) {
+                                    inferredKind
+                                } else {
+                                    model.kind
+                                }
+                                updateModels(
+                                    models.map {
+                                        if (it.id == model.id) {
+                                            model.copy(modelId = trimmed, kind = nextKind)
+                                        } else {
+                                            it
+                                        }
+                                    }
+                                )
                             },
                             modifier = Modifier.weight(1f),
                             placeholder = { Text(stringResource(R.string.setting_media_page_model_id)) },
                             singleLine = true
                         )
+                        Tag(
+                            type = if (model.kind == MediaKind.VIDEO) TagType.INFO else TagType.DEFAULT,
+                        ) {
+                            Text(model.kind.label)
+                        }
                         IconButton(onClick = { updateModels(models.filter { it.id != model.id }) }) {
                             Icon(HugeIcons.Delete01, stringResource(R.string.delete))
                         }
@@ -170,6 +201,7 @@ fun MediaGenerationProviderModelsConfigure(
                             options = kinds,
                             selected = model.kind,
                             onSelect = { kind ->
+                                manualKindIds = manualKindIds + model.id
                                 updateModels(models.map { if (it.id == model.id) model.copy(kind = kind) else it })
                             },
                         ) { kind, selected ->
@@ -178,6 +210,13 @@ fun MediaGenerationProviderModelsConfigure(
                     }
                 }
             }
+
+            item(
+                onClick = { showRemoteSheet = true },
+                headlineContent = { Text(stringResource(R.string.setting_provider_page_avaliable_models)) },
+                supportingContent = { Text(stringResource(R.string.setting_media_page_models_desc)) },
+                leadingContent = { CardGroupIcon(HugeIcons.Refresh01) },
+            )
 
             item(
                 onClick = if (kinds.isNotEmpty()) {
@@ -189,4 +228,11 @@ fun MediaGenerationProviderModelsConfigure(
             )
         }
     }
+
+    MediaGenerationRemoteModelsSheet(
+        show = showRemoteSheet,
+        setting = setting,
+        onDismissRequest = { showRemoteSheet = false },
+        onUpdateModels = { updated -> updateModels(updated) },
+    )
 }

@@ -26,6 +26,13 @@ class MediaGenerationManager(
     private val volcengine = VolcengineMediaGenerationProvider(client)
     private val miniMax = MiniMaxMediaGenerationProvider(client)
     private val openRouter = OpenRouterMediaGenerationProvider(client)
+    private val modelsClient = MediaGenerationModelsClient(client)
+
+    suspend fun listModels(
+        setting: MediaGenerationProviderSetting,
+    ): Result<List<RemoteMediaModel>> = withContext(Dispatchers.IO) {
+        runCatching { modelsClient.listModels(setting) }
+    }
 
     suspend fun create(
         setting: MediaGenerationProviderSetting,

@@ -33,8 +33,10 @@ class MediaGenerationCapabilitiesTest {
     private fun buildBody(setting: MediaGenerationProviderSetting, kind: MediaKind, request: MediaGenerationRequest) {
         val model = MediaGenerationModel(modelId = "model", kind = kind)
         when (setting) {
-            is MediaGenerationProviderSetting.OpenAI ->
-                OpenAIMediaGenerationProvider(client).buildGenerationBody(setting, model, request)
+            is MediaGenerationProviderSetting.OpenAI -> when (kind) {
+                MediaKind.IMAGE -> OpenAIMediaGenerationProvider(client).buildGenerationBody(setting, model, request)
+                MediaKind.VIDEO -> OpenAIMediaGenerationProvider(client).buildCreateVideoBody(model, request)
+            }
 
             is MediaGenerationProviderSetting.Aliyun -> when (kind) {
                 MediaKind.IMAGE -> AliyunImageGeneration(client).buildBody(model, request)
