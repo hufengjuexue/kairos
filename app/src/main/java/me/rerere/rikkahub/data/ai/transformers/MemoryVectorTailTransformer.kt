@@ -34,7 +34,7 @@ private const val TAG = "MemoryVectorTail"
 
 /**
  * 记忆库 + 溢出历史对话自动尾部近因注入转换器（两阶段检索 + 决策精排）：
- * - profile.md 与 preferences.md 已在头部常驻；
+ * - /core.md 与 /state.md（及旧版 /profile.md、/preferences.md）已在头部常驻；
  * - 一阶段（粗召回）：优先走云端 Embedding 余弦相似度并持久化到 VectorStoreCache，无模型时退回本地词法相关性；
  * - 二阶段（决策重排）：若配置了 Google `gemini-decision-1`（Decisions API 单前向批量打分）或轻量快速对话模型，
  *   对扩召回候选池（Embedding + 词法并集）做精准上下文裁决，过滤误召回并保留 Top-K；接口异常自动冷却并无感回退一阶段结果；
@@ -75,9 +75,9 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
     private const val COARSE_LEXICAL_FLOOR = 0.04f
     private const val DECISION_MIN_SCORE = 1.5
     private const val MAX_CONTEXT_CHARS_FOR_DECISION = 2400
-    private const val MAX_CHUNK_CHARS_FOR_DECISION = 700
-    private const val MAX_SECTION_CHARS = 600
-    private const val MIN_CHUNK_CHARS = 80
+    private const val MAX_CHUNK_CHARS_FOR_DECISION = 2400
+    private const val MAX_SECTION_CHARS = 2200
+    private const val MIN_CHUNK_CHARS = 160
     private const val DIALOGUE_PATH = "/history/dialogue"
     private const val DIALOGUE_TITLE = "早期对话回顾"
     private val DECISION_SCORE_CRITERIA = listOf(
@@ -105,9 +105,7 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
                     runCatching { memoryRepository.getFiles(ctx.assistant.memoryId) }.getOrDefault(emptyList())
                 }
             }
-            allFiles.filter {
-                it.path != MemoryFile.PROFILE_PATH && it.path != MemoryFile.PREFERENCES_PATH
-            }
+            allFiles.filterNot { MemoryFile.isPinnedPath(it.path) }
         } else {
             emptyList()
         }
@@ -247,6 +245,7 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
 
             buildString {
                 appendLine("<recalled_memory>")
+                appendLine("[Historical continuity reference recalled for this turn; do not override <core>, <state>, or the immediate scene tone if unrelated.]")
                 hits.groupBy { it.path to it.title }.forEach { (meta, groupedChunks) ->
                     appendLine("[${meta.first} | ${meta.second}]")
                     groupedChunks.forEach { chunk ->
@@ -582,25 +581,25 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
         return tokens
     }
 
-    private fun chunkOverflowDialogue(
+    internal fun chunkOverflowDialogue(
         overflowMessages: List<UIMessage>,
         assistantName: String,
     ): List<RecallChunk> {
-        val entries = overflowMessages.mapNotNull { msg ->
+        val rawTurns = overflowMessages.mapNotNull { msg ->
             if (msg.role != MessageRole.USER && msg.role != MessageRole.ASSISTANT) return@mapNotNull null
             val text = msg.toText().trim()
             if (text.isEmpty()) return@mapNotNull null
             val speaker = if (msg.role == MessageRole.USER) "用户" else assistantName
-            val clipped = if (text.length > 420) text.take(420) + "…" else text
-            "$speaker: $clipped"
+            speaker to text
         }
-        if (entries.isEmpty()) return emptyList()
+        if (rawTurns.isEmpty()) return emptyList()
 
         val result = mutableListOf<RecallChunk>()
         val buffer = StringBuilder()
         var order = 0
-        for (entry in entries) {
-            if (buffer.isNotEmpty() && buffer.length + entry.length + 1 > MAX_SECTION_CHARS) {
+
+        fun flushBuffer() {
+            if (buffer.isNotEmpty()) {
                 result.add(
                     RecallChunk(
                         namespace = "dialog_chunk",
@@ -612,24 +611,39 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
                 )
                 buffer.setLength(0)
             }
+        }
+
+        for ((speaker, text) in rawTurns) {
+            val singleEntry = "$speaker: $text"
+            if (singleEntry.length > MAX_SECTION_CHARS) {
+                flushBuffer()
+                val maxBody = (MAX_SECTION_CHARS - speaker.length - 16).coerceAtLeast(256)
+                val parts = splitIntoBoundedParts(text, maxBody)
+                parts.forEachIndexed { idx, part ->
+                    val label = if (parts.size > 1) "$speaker (${idx + 1}/${parts.size})" else speaker
+                    result.add(
+                        RecallChunk(
+                            namespace = "dialog_chunk",
+                            path = DIALOGUE_PATH,
+                            title = DIALOGUE_TITLE,
+                            order = order++,
+                            text = "$label: $part",
+                        )
+                    )
+                }
+                continue
+            }
+            if (buffer.isNotEmpty() && buffer.length + singleEntry.length + 1 > MAX_SECTION_CHARS) {
+                flushBuffer()
+            }
             if (buffer.isNotEmpty()) buffer.append('\n')
-            buffer.append(entry)
+            buffer.append(singleEntry)
         }
-        if (buffer.isNotEmpty()) {
-            result.add(
-                RecallChunk(
-                    namespace = "dialog_chunk",
-                    path = DIALOGUE_PATH,
-                    title = DIALOGUE_TITLE,
-                    order = order,
-                    text = buffer.toString().trim(),
-                )
-            )
-        }
+        flushBuffer()
         return result
     }
 
-    private fun chunkMemoryFiles(files: List<MemoryFile>): List<RecallChunk> {
+    internal fun chunkMemoryFiles(files: List<MemoryFile>): List<RecallChunk> {
         val result = mutableListOf<RecallChunk>()
         var globalOrder = 0
         for (file in files) {
@@ -643,31 +657,40 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
                 if (section.length <= MAX_SECTION_CHARS) {
                     rawPieces.add(section)
                 } else {
-                    val lines = section.lines()
-                    val header = lines.firstOrNull()?.takeIf { it.startsWith("## ") }
-                    val paragraphs = section.split(Regex("\\n\\s*\\n+"))
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                    for (p in paragraphs) {
-                        if (header != null && !p.startsWith("## ")) {
-                            rawPieces.add("$header\n$p")
-                        } else {
-                            rawPieces.add(p)
-                        }
+                    val firstLineEnd = section.indexOf('\n')
+                    val header = if (firstLineEnd > 0 && section.startsWith("## ")) {
+                        section.substring(0, firstLineEnd).trim()
+                    } else {
+                        null
+                    }
+                    val sectionBody = if (header != null) section.substring(firstLineEnd + 1).trim() else section
+                    val maxBody = if (header != null) {
+                        (MAX_SECTION_CHARS - header.length - 1).coerceAtLeast(256)
+                    } else {
+                        MAX_SECTION_CHARS
+                    }
+                    val parts = splitIntoBoundedParts(sectionBody, maxBody)
+                    parts.forEach { part ->
+                        rawPieces.add(if (header != null) "$header\n$part" else part)
                     }
                 }
             }
             val merged = mutableListOf<String>()
             var buffer = ""
             for (piece in rawPieces) {
-                buffer = if (buffer.isEmpty()) piece else "$buffer\n\n$piece"
+                if (buffer.isNotEmpty() && buffer.length + 2 + piece.length > MAX_SECTION_CHARS) {
+                    merged.add(buffer)
+                    buffer = piece
+                } else {
+                    buffer = if (buffer.isEmpty()) piece else "$buffer\n\n$piece"
+                }
                 if (buffer.length >= MIN_CHUNK_CHARS) {
                     merged.add(buffer)
                     buffer = ""
                 }
             }
             if (buffer.isNotEmpty()) {
-                if (merged.isNotEmpty()) {
+                if (merged.isNotEmpty() && merged.last().length + 2 + buffer.length <= MAX_SECTION_CHARS) {
                     merged[merged.lastIndex] = merged.last() + "\n\n" + buffer
                 } else {
                     merged.add(buffer)
@@ -686,6 +709,51 @@ object MemoryVectorTailTransformer : InputMessageTransformer, KoinComponent {
             }
         }
         return result
+    }
+
+    private fun splitIntoBoundedParts(text: String, maxChars: Int): List<String> {
+        if (text.length <= maxChars) return listOf(text)
+        val parts = mutableListOf<String>()
+        val current = StringBuilder()
+        val paragraphs = text.split(Regex("\\n\\s*\\n+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+        fun flushCurrent() {
+            if (current.isNotEmpty()) {
+                parts.add(current.toString().trim())
+                current.setLength(0)
+            }
+        }
+
+        fun appendSegment(seg: String) {
+            if (seg.length > maxChars) {
+                flushCurrent()
+                var start = 0
+                while (start < seg.length) {
+                    val end = (start + maxChars).coerceAtMost(seg.length)
+                    parts.add(seg.substring(start, end))
+                    start = end
+                }
+                return
+            }
+            val extra = if (current.isEmpty()) 0 else 2
+            if (current.length + extra + seg.length > maxChars) {
+                flushCurrent()
+            }
+            if (current.isNotEmpty()) current.append("\n\n")
+            current.append(seg)
+        }
+
+        for (p in paragraphs) {
+            if (p.length <= maxChars) {
+                appendSegment(p)
+            } else {
+                p.lines().map { it.trim() }.filter { it.isNotEmpty() }.forEach(::appendSegment)
+            }
+        }
+        flushCurrent()
+        return parts.ifEmpty { listOf(text.take(maxChars)) }
     }
 
     private fun cacheKey(modelId: Uuid, namespace: String, text: String): String =

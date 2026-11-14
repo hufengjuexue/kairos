@@ -21,8 +21,8 @@ private val MEMORY_FORMAT_PROMPT = """
 
     ## Layout (one topic per file)
 
-    - /profile.md: who the user (or active user persona) is — name, role, traits, background and core facts that remain stable. Under 300 words.
-    - /preferences.md: how the user wants responses written — pacing, length, narrative voice, POV, tone, formatting, boundaries, and what to avoid.
+    - /core.md: identity, traits, core canon facts, backstory, and enduring agreements that remain stable across sessions.
+    - /state.md: current live phase, pacing, narrative voice, POV, response formatting, active boundaries, and what to avoid right now.
     - /topics/<domain>.md: stable background facts, tastes, worldbuilding lore, or recurring elements grouped by topic (e.g. world, habits, places, tastes, ...).
     - /arcs/<name>.md: ongoing storylines, multi-turn plot arcs, shared plans, or promises/goals with lasting stakes. Record turning points, constraints, and current state.
     - /people/<name-or-relation>.md: characters and people who matter for future continuity — their identity, personality traits, secrets, relationship dynamic with the user, and shared history.
@@ -61,7 +61,7 @@ private val MEMORY_FORMAT_PROMPT = """
     - Read before you edit, and pass if_version. On a version conflict, merge based on the returned latest content and retry.
     - Keep history when a state changes: "on the infra team (previously on search)".
     - If an edit makes description inaccurate, fix it in the same edit.
-    - When a file approaches its size limit, merge duplicates and drop outdated details instead of squeezing more in.
+    - Merge duplicates and supersede outdated details cleanly as facts evolve, keeping continuity intact.
     </memory_format>
 """.trimIndent()
 
@@ -81,7 +81,7 @@ private val MEMORY_SYSTEM_RULES = """
     - When you need multi-hop relationships or temporal continuity ("who is currently allied with whom", "what changed between A and B over time", "who currently holds item X"), call recall_relations with mode="network" or mode="timeline".
     - Do not call memory_read or recall_relations for generic factual/standalone questions that do not depend on shared history.
     - Before claiming something has no prior context or forgetting an established name/detail, read any listing files or graph timeline that could plausibly cover it.
-    - profile and preferences are already included above; do not read them again. Their version attribute can be passed as if_version directly.
+    - core (/core.md) and state (/state.md) are already included above; do not read them again. Their version attribute can be passed as if_version directly.
 
     ## How to apply
 
@@ -118,7 +118,7 @@ private val MEMORY_CONSOLIDATION_WORKFLOW = """
     1. Extract durable facts and canon continuity from <new_turns> that pass the [stated] test and continuity calibration — covering both what the user stated (identity, tastes, preferences, choices) and explicit character disclosures, mutual promises, relationship shifts, or established plot/scene facts that actually held across the exchange. Use <recent_context> only for disambiguating context.
     2. Drop anything the memory store already has (a rephrasing counts as already there).
     3. Group the rest by target file: one write operation per file; sensitive facts get their own operation, last.
-    4. For existing files: memory_read first, then memory_str_replace or memory_append. For new files: memory_write with if_version="new". The version attribute on profile and preferences can be passed as if_version directly.
+    4. For existing files: memory_read first, then memory_str_replace or memory_append. For new files: memory_write with if_version="new". The version attribute on core and state can be passed as if_version directly.
     5. Only touch files you are adding new facts to. While you are in such a file you may also merge lines that say the same thing and correct lines the new turns made outdated. Leave every other file alone.
     6. Temporal relation graph (<temporal_relation_graph>): whenever <new_turns> establish or shift a concrete relationship, loyalty, location, item custody, vow, or status between two entities, check existing edges with recall_relations(mode="timeline") and record/supersede the edge via graph_upsert_relations (passing replace_relation_types or supersede_edge_ids when an old state is replaced so timeline history stays intact). Skip trivial transient actions.
 
@@ -160,7 +160,7 @@ internal fun buildMemoryConsolidationPrompt(fullReview: Boolean): String = build
     }
 }
 
-/** 主对话 system prompt 里的记忆片段：全文注入 profile 和 preferences，其余文件只给清单 */
+/** 主对话 system prompt 里的记忆片段：全文注入 core 和 state，其余文件只给清单 */
 internal fun buildMemoryPrompt(files: List<MemoryFile>): String = buildString {
     appendLine("<memory_system>")
     appendLine(MEMORY_SYSTEM_INTRO)
@@ -207,12 +207,16 @@ internal fun buildMemoryConsolidationInput(
 }.trimEnd()
 
 private fun StringBuilder.appendMemoryState(files: List<MemoryFile>) {
-    appendPinnedFile("profile", files.find { it.path == MemoryFile.PROFILE_PATH })
+    val coreFile = files.find { it.path == MemoryFile.CORE_PATH }
+        ?: files.find { it.path == MemoryFile.LEGACY_PROFILE_PATH }
+    val stateFile = files.find { it.path == MemoryFile.STATE_PATH }
+        ?: files.find { it.path == MemoryFile.LEGACY_PREFERENCES_PATH }
+    appendPinnedFile("core", coreFile)
     appendLine()
-    appendPinnedFile("preferences", files.find { it.path == MemoryFile.PREFERENCES_PATH })
+    appendPinnedFile("state", stateFile)
     appendLine()
     appendLine("<memory_listing>")
-    val listed = files.filter { it.path != MemoryFile.PROFILE_PATH && it.path != MemoryFile.PREFERENCES_PATH }
+    val listed = files.filterNot { MemoryFile.isPinnedPath(it.path) }
     if (listed.isEmpty()) {
         appendLine("(no files yet)")
     } else {

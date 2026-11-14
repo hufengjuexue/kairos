@@ -87,7 +87,7 @@ class MemoryConsolidationSchedulerTest {
                 memoryId = memoryId,
                 finishedAt = 0,
                 fullReview = fullReview,
-                changedPaths = listOf("/profile.md"),
+                changedPaths = listOf("/core.md"),
                 advancedConversations = if (stuck) emptySet() else batch.toSet(),
             )
         }

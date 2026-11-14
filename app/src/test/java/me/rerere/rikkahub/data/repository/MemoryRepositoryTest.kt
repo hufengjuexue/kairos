@@ -31,14 +31,14 @@ class MemoryRepositoryTest {
 
     @Test
     fun `writing with a stale version is rejected and a fresh version succeeds`() = runBlocking {
-        val first = create("/profile.md", "- [stated] Lives in Shenzhen\n")
-        val second = (repository.appendToFile(assistant, "/profile.md", "- [stated] Works as a designer", first.version)
+        val first = create("/core.md", "- [stated] Lives in Shenzhen\n")
+        val second = (repository.appendToFile(assistant, "/core.md", "- [stated] Works as a designer", first.version)
             as MemoryWriteResult.Success).file!!
 
-        val stale = repository.appendToFile(assistant, "/profile.md", "- [stated] Stale", first.version)
+        val stale = repository.appendToFile(assistant, "/core.md", "- [stated] Stale", first.version)
         assertEquals(MemoryWriteResult.Conflict(second), stale)
 
-        val fresh = repository.writeFile(assistant, "/profile.md", "rewritten", second.version)
+        val fresh = repository.writeFile(assistant, "/core.md", "rewritten", second.version)
         assertEquals("rewritten", (fresh as MemoryWriteResult.Success).file?.content)
     }
 
@@ -110,7 +110,7 @@ class MemoryRepositoryTest {
     fun `oversized content and invalid paths are rejected`() = runBlocking {
         val tooLarge = repository.writeFile(assistant, "/topics/big.md", "a".repeat(MemoryFile.MAX_BYTES + 1))
         val notMarkdown = repository.writeFile(assistant, "/topics/food.txt", "content")
-        val traversal = repository.writeFile(assistant, "/topics/../profile.md", "content")
+        val traversal = repository.writeFile(assistant, "/topics/../core.md", "content")
 
         assertTrue(tooLarge is MemoryWriteResult.Rejected)
         assertTrue(notMarkdown is MemoryWriteResult.Rejected)
@@ -122,20 +122,20 @@ class MemoryRepositoryTest {
     fun `an oversized file can shrink but not grow`() = runBlocking {
         // 迁移直接写库，不经过大小检查
         val lines = List(MemoryFile.MAX_BYTES / 1000 + 10) { "- [stated] Fact $it ${"x".repeat(1000)}\n" }
-        dao.upsertFile(MemoryFileEntity(assistant, "/profile.md", lines.joinToString(""), updatedAt = 0))
-        val file = repository.getFile(assistant, "/profile.md")!!
+        dao.upsertFile(MemoryFileEntity(assistant, "/core.md", lines.joinToString(""), updatedAt = 0))
+        val file = repository.getFile(assistant, "/core.md")!!
 
-        val append = repository.appendToFile(assistant, "/profile.md", "- [stated] More", file.version)
+        val append = repository.appendToFile(assistant, "/core.md", "- [stated] More", file.version)
         assertTrue(append is MemoryWriteResult.Rejected)
 
         val trimmed = lines.drop(1).joinToString("")
-        val removed = repository.replaceInFile(assistant, "/profile.md", lines.first().trimEnd(), "", file.version)
+        val removed = repository.replaceInFile(assistant, "/core.md", lines.first().trimEnd(), "", file.version)
         assertEquals(trimmed, (removed as MemoryWriteResult.Success).file?.content)
         assertTrue(trimmed.toByteArray().size > MemoryFile.MAX_BYTES)
 
         // 用户在编辑页删掉一部分后保存，同样走 writeFile
         val edited = lines.drop(2).joinToString("")
-        val saved = repository.writeFile(assistant, "/profile.md", edited)
+        val saved = repository.writeFile(assistant, "/core.md", edited)
         assertEquals(edited, (saved as MemoryWriteResult.Success).file?.content)
     }
 
@@ -149,15 +149,35 @@ class MemoryRepositoryTest {
 
     @Test
     fun `memory stores are isolated and can be copied`() = runBlocking {
-        create("/profile.md", "- [stated] Name is Lin\n")
+        create("/core.md", "- [stated] Name is Lin\n")
 
         assertTrue(repository.getFiles("other").isEmpty())
         repository.copyFiles(assistant, "other")
-        assertEquals("- [stated] Name is Lin\n", repository.getFile("other", "/profile.md")?.content)
+        assertEquals("- [stated] Name is Lin\n", repository.getFile("other", "/core.md")?.content)
 
         repository.deleteFilesOfAssistant(assistant)
         assertTrue(repository.getFiles(assistant).isEmpty())
         assertEquals(1, repository.getFiles("other").size)
+    }
+
+    @Test
+    fun `legacy pinned paths alias cleanly to core and state without creating duplicates`() = runBlocking {
+        val core = create("/core.md", "- [stated] Name is Lin\n")
+        assertEquals(core.content, repository.getFile(assistant, "/profile.md")?.content)
+
+        val conflictNew = repository.writeFile(assistant, "/profile.md", "dup", MemoryRepository.NEW_FILE_VERSION)
+        assertEquals(MemoryWriteResult.Conflict(core), conflictNew)
+
+        val appended = repository.appendToFile(assistant, "/profile.md", "- [stated] Added via alias", core.version)
+        assertEquals("/core.md", (appended as MemoryWriteResult.Success).file?.path)
+        assertEquals(1, repository.getFiles(assistant).size)
+
+        // 未迁移的旧库只有 /profile.md 时，按 /core.md 也能读到并就地更新
+        dao.upsertFile(MemoryFileEntity("legacy", "/profile.md", "- [stated] Old profile\n", updatedAt = 0))
+        val legacyRead = repository.getFile("legacy", "/core.md")!!
+        assertEquals("/profile.md", legacyRead.path)
+        val updatedLegacy = repository.appendToFile("legacy", "/core.md", "- [stated] Updated\n", legacyRead.version)
+        assertEquals("/profile.md", (updatedLegacy as MemoryWriteResult.Success).file?.path)
     }
 
     @Test
@@ -180,14 +200,14 @@ class MemoryRepositoryTest {
     }
 
     @Test
-    fun `files are grouped by directory with profile and preferences first`() = runBlocking {
+    fun `files are grouped by directory with core and state first`() = runBlocking {
         listOf(
             "/people/mom.md",
             "/topics/food.md",
             "/work/notes.md",
-            "/preferences.md",
+            "/state.md",
             "/areas/house-hunt.md",
-            "/profile.md",
+            "/core.md",
             "/topics/books.md",
         ).forEach { create(it, "content") }
 
@@ -195,7 +215,7 @@ class MemoryRepositoryTest {
 
         assertEquals(
             listOf(
-                "/" to listOf("profile", "preferences"),
+                "/" to listOf("core", "state"),
                 "/topics" to listOf("books", "food"),
                 "/areas" to listOf("house-hunt"),
                 "/people" to listOf("mom"),
@@ -208,7 +228,7 @@ class MemoryRepositoryTest {
     @Test
     fun `titles are derived from the file name`() = runBlocking {
         assertEquals("Frontend Tooling", create("/topics/frontend-tooling.md", "content").title)
-        assertEquals("Profile", create("/profile.md", "content").title)
+        assertEquals("Core", create("/core.md", "content").title)
         assertEquals("妈妈", create("/people/妈妈.md", "content").title)
     }
 

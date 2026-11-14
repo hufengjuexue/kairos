@@ -7,15 +7,15 @@ import org.junit.Test
 
 class Migration_27_28_Test {
     @Test
-    fun `legacy memories become one profile line each`() {
-        val profile = legacyMemoriesToProfile(
+    fun `legacy memories become one core line each`() {
+        val core = legacyMemoriesToProfile(
             listOf("User prefers brief replies", "  ", "Name is Lin\nLives in Shenzhen")
         )!!
 
         assertEquals(
             """
                 ---
-                name: profile
+                name: core
                 description: Who the user is
                 ---
 
@@ -23,9 +23,9 @@ class Migration_27_28_Test {
                 - [stated] Name is Lin Lives in Shenzhen
 
             """.trimIndent(),
-            profile,
+            core,
         )
-        assertEquals("Who the user is", MemoryFile(MemoryFile.PROFILE_PATH, profile, 0).description)
+        assertEquals("Who the user is", MemoryFile(MemoryFile.CORE_PATH, core, 0).description)
     }
 
     @Test

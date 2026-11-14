@@ -42,7 +42,7 @@ class MemoryRepository(private val memoryDAO: MemoryDAO) {
 
     suspend fun getFile(assistantId: String, path: String): MemoryFile? {
         val normalized = MemoryFile.normalizePath(path) ?: return null
-        return memoryDAO.getFile(assistantId, normalized)?.toMemoryFile()
+        return resolveExistingFile(assistantId, normalized)?.toMemoryFile()
     }
 
     /** 新建或整体覆盖 */
@@ -91,11 +91,12 @@ class MemoryRepository(private val memoryDAO: MemoryDAO) {
         ifVersion: String? = null,
     ): MemoryWriteResult = writeLock.withLock {
         val normalized = MemoryFile.normalizePath(path) ?: return invalidPath(path)
-        val current = memoryDAO.getFile(assistantId, normalized)?.toMemoryFile()
+        val currentEntity = resolveExistingFile(assistantId, normalized)
+        val current = currentEntity?.toMemoryFile()
         if (current == null || (ifVersion != null && ifVersion != current.version)) {
             return MemoryWriteResult.Conflict(current)
         }
-        memoryDAO.deleteFile(assistantId, normalized)
+        memoryDAO.deleteFile(assistantId, currentEntity.path)
         MemoryWriteResult.Success(null)
     }
 
@@ -107,6 +108,12 @@ class MemoryRepository(private val memoryDAO: MemoryDAO) {
         val files = memoryDAO.getFilesOfAssistant(fromAssistantId)
         if (files.isEmpty()) return
         memoryDAO.upsertFiles(files.map { it.copy(assistantId = toAssistantId) })
+    }
+
+    private suspend fun resolveExistingFile(assistantId: String, normalizedPath: String): MemoryFileEntity? {
+        memoryDAO.getFile(assistantId, normalizedPath)?.let { return it }
+        val alias = MemoryFile.pinnedAliasOf(normalizedPath) ?: return null
+        return memoryDAO.getFile(assistantId, alias)
     }
 
     private sealed interface Edit {
@@ -122,7 +129,9 @@ class MemoryRepository(private val memoryDAO: MemoryDAO) {
         edit: (current: String) -> Edit,
     ): MemoryWriteResult = writeLock.withLock {
         val normalized = MemoryFile.normalizePath(path) ?: return invalidPath(path)
-        val current = memoryDAO.getFile(assistantId, normalized)?.toMemoryFile()
+        val currentEntity = resolveExistingFile(assistantId, normalized)
+        val current = currentEntity?.toMemoryFile()
+        val targetPath = currentEntity?.path ?: MemoryFile.canonicalPinnedPath(normalized)
         val versionMatches = when (ifVersion) {
             null -> current != null || allowCreate
             NEW_FILE_VERSION -> current == null && allowCreate
@@ -136,15 +145,16 @@ class MemoryRepository(private val memoryDAO: MemoryDAO) {
         }
         // 只拦会让文件变大的超限写入：迁移来的旧记忆可能本来就超限，得允许一点点删小
         val size = content.toByteArray().size
-        if (size > MemoryFile.MAX_BYTES && size > current?.content?.toByteArray()?.size ?: 0) {
+        val currentSize = current?.content?.toByteArray()?.size ?: 0
+        if (size > MemoryFile.MAX_BYTES && size > currentSize) {
             return MemoryWriteResult.Rejected(
-                "$normalized would exceed the ${MemoryFile.MAX_BYTES / 1024}KB limit. " +
+                "$targetPath would exceed the ${MemoryFile.MAX_BYTES / 1024}KB limit. " +
                     "Merge duplicates and drop outdated details instead of adding more."
             )
         }
         val entity = MemoryFileEntity(
             assistantId = assistantId,
-            path = normalized,
+            path = targetPath,
             content = content,
             updatedAt = System.currentTimeMillis(),
         )

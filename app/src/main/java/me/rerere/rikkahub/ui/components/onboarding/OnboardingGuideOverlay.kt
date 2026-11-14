@@ -653,7 +653,7 @@ private fun PptDiagramStage(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             PptMiniPill(
-                                text = "1. 头部设定 & profile.md 🔒 字节级不变 · 前缀缓存 100% 命中",
+                                text = "1. 头部设定 & core.md 🔒 字节级不变 · 前缀缓存 100% 命中",
                                 modifier = Modifier.fillMaxWidth(),
                                 active = beat >= 1,
                             )
