@@ -1,7 +1,7 @@
 {
   "version": "1.4.1",
   "versionCode": 201,
-  "publishedAt": "2026-11-14T20:33:00Z",
+  "publishedAt": "2026-11-14T21:47:26Z",
   "changelog": "Kairos v1.4.1：\n\n1. 【媒体创作升级】彻底移除已弃用旧版生图页面与配置，补全媒体供应商拉取/识别视频模型（Sora / Veo / Seedance 等）及 OpenAI 视频生成支持\n2. 【液态玻璃修复】显式固定 AssistantBackground / ChatList / ChatListPreview 的 HazeSource 层级 zIndex，解决首次进入聊天页背景遮挡消息导致玻璃透不出来的问题\n3. 【Operit 风格对话地图】侧边常驻半透明定位胶囊，一点直接打开「跳转到消息」弹窗（实时定位第 X/N 条、关键词高亮搜索、仅看收藏、点击星标与字数统计）",
   "downloads": [
     {
